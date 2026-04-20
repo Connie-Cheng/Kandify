@@ -1,0 +1,340 @@
+/* Glow Gradient Theme - Soft, ambient, volumetric lighting aesthetic */
+
+@layer utilities {
+  /* Gradient blob backgrounds - asymmetric multi-point gradients */
+  .glow-blob-pink-purple {
+    position: relative;
+    background: radial-gradient(ellipse 120% 150% at 35% 25%, rgba(255, 0, 110, 0.5) 0%, transparent 65%),
+                radial-gradient(ellipse 110% 130% at 75% 65%, rgba(199, 125, 255, 0.45) 0%, transparent 60%),
+                radial-gradient(ellipse 100% 120% at 15% 75%, rgba(255, 0, 110, 0.35) 0%, transparent 55%);
+  }
+
+  .glow-blob-cyan-magenta {
+    position: relative;
+    background: radial-gradient(ellipse 130% 110% at 20% 40%, rgba(0, 245, 255, 0.4) 0%, transparent 62%),
+                radial-gradient(ellipse 105% 140% at 80% 30%, rgba(255, 0, 110, 0.38) 0%, transparent 58%),
+                radial-gradient(ellipse 115% 125% at 50% 85%, rgba(199, 125, 255, 0.42) 0%, transparent 60%);
+  }
+
+  .glow-blob-lime-purple {
+    position: relative;
+    background: radial-gradient(ellipse 100% 135% at 25% 15%, rgba(204, 255, 0, 0.35) 0%, transparent 60%),
+                radial-gradient(ellipse 125% 120% at 70% 75%, rgba(114, 9, 183, 0.48) 0%, transparent 65%),
+                radial-gradient(ellipse 110% 110% at 10% 80%, rgba(58, 12, 163, 0.4) 0%, transparent 58%);
+  }
+
+  .glow-blob-red-orange {
+    position: relative;
+    background: radial-gradient(ellipse 115% 145% at 45% 25%, rgba(255, 0, 110, 0.42) 0%, transparent 63%),
+                radial-gradient(ellipse 120% 115% at 20% 80%, rgba(255, 84, 0, 0.45) 0%, transparent 60%),
+                radial-gradient(ellipse 105% 130% at 80% 55%, rgba(255, 0, 110, 0.38) 0%, transparent 58%);
+  }
+
+  .glow-blob-green-cyan {
+    position: relative;
+    background: radial-gradient(ellipse at 35% 35%, #00ff88 0%, transparent 48%),
+                radial-gradient(ellipse at 70% 60%, #00f5ff 0%, transparent 46%),
+                radial-gradient(ellipse at 20% 80%, #00ff88 0%, transparent 44%);
+  }
+
+  .glow-blob-violet-pink {
+    position: relative;
+    background: radial-gradient(ellipse at 30% 25%, #7209b7 0%, transparent 50%),
+                radial-gradient(ellipse at 75% 70%, #ff006e 0%, transparent 45%),
+                radial-gradient(ellipse at 10% 70%, #c77dff 0%, transparent 40%);
+  }
+
+  /* Inner glow effect - creates depth */
+  .inner-glow {
+    box-shadow: inset 0 0 60px rgba(255, 255, 255, 0.08),
+                inset 0 0 40px rgba(255, 255, 255, 0.05);
+  }
+
+  /* Outer glow - soft separation from background */
+  .outer-glow-subtle {
+    filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.1))
+            drop-shadow(0 0 40px rgba(255, 255, 255, 0.05));
+  }
+
+  .outer-glow-pink {
+    filter: drop-shadow(0 0 25px rgba(255, 0, 110, 0.15))
+            drop-shadow(0 0 50px rgba(255, 0, 110, 0.08));
+  }
+
+  .outer-glow-cyan {
+    filter: drop-shadow(0 0 25px rgba(0, 245, 255, 0.15))
+            drop-shadow(0 0 50px rgba(0, 245, 255, 0.08));
+  }
+
+  .outer-glow-purple {
+    filter: drop-shadow(0 0 25px rgba(199, 125, 255, 0.15))
+            drop-shadow(0 0 50px rgba(199, 125, 255, 0.08));
+  }
+
+  /* Frosted glass with gradient blobs */
+  .glass-morph {
+    background: rgba(14, 14, 17, 0.3);
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+  }
+
+  .glass-morph-header {
+    background: rgba(14, 14, 17, 0.5);
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .glass-morph-panel {
+    background: rgba(14, 14, 17, 0.4);
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    box-shadow: 1px 0 0 rgba(255, 255, 255, 0.03);
+  }
+
+  .glass-button {
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .glass-button:hover {
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  .glass-card {
+    background: rgba(14, 14, 17, 0.4);
+    backdrop-filter: blur(40px) saturate(160%);
+    -webkit-backdrop-filter: blur(40px) saturate(160%);
+    border: none;
+  }
+
+  .outer-glow-soft {
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5),
+                0 0 80px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Heavy blur for diffused lighting */
+  .blur-heavy {
+    filter: blur(60px);
+  }
+
+  .blur-medium {
+    filter: blur(40px);
+  }
+
+  .blur-soft {
+    filter: blur(20px);
+  }
+
+  /* Background blobs - layered for depth */
+  .bg-blob {
+    position: absolute;
+    border-radius: 50%;
+    mix-blend-mode: screen;
+    opacity: 0.6;
+  }
+
+  /* Hover states - gradients shift and intensify */
+  .glow-hover {
+    transition: filter 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .glow-hover:hover {
+    filter: brightness(1.15) saturate(1.2);
+  }
+
+  /* Active states - inner glow intensifies */
+  .glow-active:active {
+    filter: brightness(1.25) saturate(1.3);
+    box-shadow: inset 0 0 80px rgba(255, 255, 255, 0.12),
+                inset 0 0 60px rgba(255, 255, 255, 0.08);
+  }
+
+  /* Soft vignette for depth */
+  .vignette {
+    box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.3),
+                inset 0 0 60px rgba(0, 0, 0, 0.2);
+  }
+
+  /* No borders - use gradients only */
+  .border-glow-pink {
+    border: none;
+    box-shadow: 0 0 0 1px rgba(255, 0, 110, 0.2),
+                inset 0 0 30px rgba(255, 0, 110, 0.1);
+  }
+
+  .border-glow-cyan {
+    border: none;
+    box-shadow: 0 0 0 1px rgba(0, 245, 255, 0.2),
+                inset 0 0 30px rgba(0, 245, 255, 0.1);
+  }
+
+  /* Smooth transitions */
+  .transition-glow {
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Hover scale utilities */
+  .hover\:scale-102:hover {
+    transform: scale(1.02);
+  }
+
+  .hover\:scale-105:hover {
+    transform: scale(1.05);
+  }
+
+  .hover\:scale-110:hover {
+    transform: scale(1.1);
+  }
+
+  .hover\:scale-125:hover {
+    transform: scale(1.25);
+  }
+
+  /* Card with volumetric lighting */
+  .glow-card {
+    background: rgba(14, 14, 17, 0.4);
+    backdrop-filter: blur(40px);
+    border: none;
+    box-shadow: inset 0 0 60px rgba(255, 255, 255, 0.05),
+                0 0 40px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Button with internal gradient glow */
+  .glow-button {
+    position: relative;
+    background: rgba(14, 14, 17, 0.5);
+    backdrop-filter: blur(20px);
+    border: none;
+    overflow: hidden;
+    box-shadow: inset 0 0 40px rgba(255, 255, 255, 0.08),
+                0 0 20px rgba(0, 0, 0, 0.2);
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .glow-button:hover {
+    box-shadow: inset 0 0 60px rgba(255, 255, 255, 0.12),
+                0 0 30px rgba(255, 255, 255, 0.1);
+  }
+
+  .glow-button::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .glow-button:hover::before {
+    opacity: 1;
+  }
+}
+
+/* Base background - near black */
+body {
+  background: #0E0E11 !important;
+}
+
+/* Festival light animations */
+@keyframes festivalFloat {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0;
+  }
+  5% {
+    opacity: 0.15;
+  }
+  15% {
+    transform: translate(20vw, -15vh) scale(1.15);
+    opacity: 0.25;
+  }
+  30% {
+    transform: translate(40vw, -25vh) scale(1.25);
+    opacity: 0.2;
+  }
+  50% {
+    transform: translate(-20vw, 35vh) scale(0.95);
+    opacity: 0.15;
+  }
+  65% {
+    transform: translate(10vw, 25vh) scale(1.1);
+    opacity: 0.2;
+  }
+  80% {
+    transform: translate(35vw, 10vh) scale(1.05);
+    opacity: 0.15;
+  }
+  90% {
+    opacity: 0.08;
+  }
+  96% {
+    opacity: 0.02;
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes festivalPulse {
+  0% {
+    opacity: 0;
+    filter: blur(80px) brightness(1) saturate(1.2);
+  }
+  1% {
+    opacity: 0.25;
+    filter: blur(70px) brightness(1.15) saturate(1.5);
+  }
+  2% {
+    opacity: 0.55;
+    filter: blur(65px) brightness(1.25) saturate(1.7);
+  }
+  3% {
+    opacity: 0.75;
+    filter: blur(60px) brightness(1.35) saturate(1.9);
+  }
+  4% {
+    opacity: 0.68;
+    filter: blur(65px) brightness(1.3) saturate(1.75);
+  }
+  6% {
+    opacity: 0.52;
+    filter: blur(70px) brightness(1.2) saturate(1.6);
+  }
+  9% {
+    opacity: 0.38;
+    filter: blur(75px) brightness(1.1) saturate(1.45);
+  }
+  13% {
+    opacity: 0.26;
+    filter: blur(82px) brightness(1.05) saturate(1.3);
+  }
+  18% {
+    opacity: 0.16;
+    filter: blur(88px) brightness(0.98) saturate(1.15);
+  }
+  25% {
+    opacity: 0.09;
+    filter: blur(92px) brightness(0.92) saturate(1.05);
+  }
+  35% {
+    opacity: 0.04;
+    filter: blur(95px) brightness(0.88) saturate(1);
+  }
+  50% {
+    opacity: 0.01;
+    filter: blur(97px) brightness(0.85) saturate(0.95);
+  }
+  100% {
+    opacity: 0;
+    filter: blur(80px) brightness(1) saturate(1.2);
+  }
+}
+
+.festival-light {
+  will-change: transform, opacity;
+}
