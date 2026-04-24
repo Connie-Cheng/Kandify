@@ -10,8 +10,8 @@ export interface SongBracelet {
 export const songBracelets: SongBracelet[] = [
   {
     songId: 1,
-    songTitle: 'Midnight City',
-    artist: 'The Nocturnes',
+    songTitle: 'Replay',
+    artist: 'Iyaz',
     beads: [
       { type: 'bead', color: '#1e3a8a', material: 'glossy', size: 'medium' },
       { type: 'bead', color: '#3b82f6', material: 'iridescent', size: 'small' },
@@ -28,8 +28,8 @@ export const songBracelets: SongBracelet[] = [
   },
   {
     songId: 100,
-    songTitle: 'my love my love my love',
-    artist: 'yung kai',
+    songTitle: 'Rock with You',
+    artist: 'Michael Jackson',
     beads: [
       // Romantic pink/red theme - emotional, tender
       { type: 'bead', color: '#ff6b9d', material: 'glossy', size: 'medium' },

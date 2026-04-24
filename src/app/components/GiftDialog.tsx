@@ -7,7 +7,12 @@ interface GiftDialogProps {
   onClose: () => void;
 }
 
-const FRIENDS = ['Jessica', 'Connie', 'Maya', 'Alex'];
+const FRIENDS = [
+  { name: 'Jessica', color: '#f472b6', gradient: 'from-pink-400 to-pink-600' },
+  { name: 'Connie',  color: '#60a5fa', gradient: 'from-blue-400 to-blue-600' },
+  { name: 'Jack',    color: '#a78bfa', gradient: 'from-violet-400 to-violet-600' },
+  { name: 'Alex',    color: '#fbbf24', gradient: 'from-yellow-400 to-yellow-600' },
+];
 
 export function GiftDialog({ songTitle, artist, onClose }: GiftDialogProps) {
   const [selectedFriend, setSelectedFriend] = useState<string | null>(null);
@@ -41,23 +46,21 @@ export function GiftDialog({ songTitle, artist, onClose }: GiftDialogProps) {
           <div className="space-y-2">
             {FRIENDS.map((friend) => (
               <button
-                key={friend}
-                onClick={() => setSelectedFriend(friend)}
+                key={friend.name}
+                onClick={() => setSelectedFriend(friend.name)}
                 className={`w-full text-left px-4 py-3 rounded-2xl transition-all ${
-                  selectedFriend === friend
-                    ? 'glass-button'
-                    : 'glass-card hover:glass-button'
+                  selectedFriend === friend.name ? 'glass-button' : 'glass-card hover:glass-button'
                 }`}
-                style={selectedFriend === friend ? {
-                  background: 'radial-gradient(circle at 30% 50%, rgba(255, 0, 110, 0.3), rgba(199, 125, 255, 0.2))',
-                  boxShadow: '0 0 0 2px rgba(255, 0, 110, 0.4)'
+                style={selectedFriend === friend.name ? {
+                  background: `radial-gradient(circle at 30% 50%, ${friend.color}40, ${friend.color}20)`,
+                  boxShadow: `0 0 0 2px ${friend.color}66`
                 } : {}}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-purple-500 flex items-center justify-center font-bold">
-                    {friend[0]}
+                  <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${friend.gradient} flex items-center justify-center font-bold`}>
+                    {friend.name[0]}
                   </div>
-                  <span className="font-medium">{friend}</span>
+                  <span className="font-medium">{friend.name}</span>
                 </div>
               </button>
             ))}

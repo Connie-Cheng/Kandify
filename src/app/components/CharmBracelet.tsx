@@ -21,9 +21,10 @@ interface CharmBraceletProps {
   songTitle: string;
   artist: string;
   onGift?: () => void;
+  onBlend?: () => void;
 }
 
-export function CharmBracelet({ beads, songTitle, artist, onGift }: CharmBraceletProps) {
+export function CharmBracelet({ beads, songTitle, artist, onGift, onBlend }: CharmBraceletProps) {
   const totalBeads = beads.length;
 
   // Calculate position for each bead on circle
@@ -50,7 +51,10 @@ export function CharmBracelet({ beads, songTitle, artist, onGift }: CharmBracele
         <h3 className="text-base font-semibold text-white truncate">{songTitle}</h3>
         <p className="text-xs text-white/50 truncate">{artist}</p>
         <div className="flex gap-2 mt-2">
-          <button className="flex-1 glass-button rounded-full py-1.5 px-3 text-xs font-medium transition-all hover:scale-105 flex items-center justify-center gap-1.5">
+          <button
+            onClick={(e) => { e.stopPropagation(); onBlend?.(); }}
+            className="flex-1 glass-button rounded-full py-1.5 px-3 text-xs font-medium transition-all hover:scale-105 flex items-center justify-center gap-1.5"
+          >
             <Blend className="w-3.5 h-3.5" />
             Blend
           </button>

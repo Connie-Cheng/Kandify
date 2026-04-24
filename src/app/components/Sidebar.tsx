@@ -1,10 +1,14 @@
 import { Home, Search, Library, Plus, Heart, Music2, Radio, ListMusic, Clock, Upload, Users } from 'lucide-react';
+import { SpotifyConnect } from './SpotifyConnect';
 
 interface SidebarProps {
   onOpenAssetUploader: () => void;
+  spotifyAuthenticated: boolean;
+  spotifyReady: boolean;
+  onSpotifyLogout: () => void;
 }
 
-export function Sidebar({ onOpenAssetUploader }: SidebarProps) {
+export function Sidebar({ onOpenAssetUploader, spotifyAuthenticated, spotifyReady, onSpotifyLogout }: SidebarProps) {
   return (
     <div className="w-64 glass-morph-panel flex flex-col">
       {/* Logo */}
@@ -40,6 +44,12 @@ export function Sidebar({ onOpenAssetUploader }: SidebarProps) {
             <Upload className="w-5 h-5" />
             <span>Upload Assets</span>
           </button>
+
+          <SpotifyConnect
+            isAuthenticated={spotifyAuthenticated}
+            isReady={spotifyReady}
+            onLogout={onSpotifyLogout}
+          />
         </div>
 
         {/* Library Section */}
@@ -77,22 +87,22 @@ export function Sidebar({ onOpenAssetUploader }: SidebarProps) {
           </h3>
           <div className="space-y-1">
             <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-white/70 hover:text-white hover:glass-button transition-all">
-              <Users className="w-5 h-5" />
+              <Users className="w-5 h-5" style={{ color: '#f472b6' }} />
               <span>Jessica</span>
             </button>
 
             <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-white/70 hover:text-white hover:glass-button transition-all">
-              <Users className="w-5 h-5" />
+              <Users className="w-5 h-5" style={{ color: '#60a5fa' }} />
               <span>Connie</span>
             </button>
 
             <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-white/70 hover:text-white hover:glass-button transition-all">
-              <Users className="w-5 h-5" />
-              <span>Maya</span>
+              <Users className="w-5 h-5" style={{ color: '#a78bfa' }} />
+              <span>Jack</span>
             </button>
 
             <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-white/70 hover:text-white hover:glass-button transition-all">
-              <Users className="w-5 h-5" />
+              <Users className="w-5 h-5" style={{ color: '#fbbf24' }} />
               <span>Alex</span>
             </button>
           </div>

@@ -2,88 +2,91 @@ import { Play, MoreHorizontal, Sparkles } from 'lucide-react';
 import { Song } from '../App';
 import { CharmBracelet } from './CharmBracelet';
 import { GiftDialog } from './GiftDialog';
+import { BlendDialog } from './BlendDialog';
 import { songBracelets as predefinedBracelets } from '../data/songBracelets';
 import { useEffect, useState } from 'react';
 
 const FEATURED_ALBUMS = [
   {
     id: 1,
-    title: 'Midnight Dreams',
-    artist: 'The Nocturnes',
-    coverUrl: 'https://images.unsplash.com/photo-1644855640845-ab57a047320e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=400',
+    title: 'Ctrl',
+    artist: 'SZA',
+    coverUrl: '/covers/CTRL.jpg',
   },
   {
     id: 2,
-    title: 'For Lack of a Better Name',
-    artist: 'deadmau5',
-    coverUrl: 'https://images.unsplash.com/photo-1746961135207-faf67473848a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=400',
+    title: 'IGOR',
+    artist: 'Tyler, The Creator',
+    coverUrl: '/covers/igor.jpg',
   },
   {
     id: 3,
-    title: 'Neon Nights',
-    artist: 'Synthwave Collective',
-    coverUrl: 'https://images.unsplash.com/photo-1761163924901-2ed45af2c8c6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=400',
+    title: 'To Pimp a Butterfly',
+    artist: 'Kendrick Lamar',
+    coverUrl: '/covers/to-pimp-a-butterfly.jpg',
   },
   {
     id: 4,
-    title: 'Thunder Road',
-    artist: 'The Storm',
-    coverUrl: 'https://images.unsplash.com/photo-1717978227391-fe68c7a9e02a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=400',
+    title: 'Lemonade',
+    artist: 'Beyonce',
+    coverUrl: '/covers/lemonade.png',
   },
   {
     id: 5,
-    title: 'Blue Note Sessions',
-    artist: 'Miles & The Cats',
-    coverUrl: 'https://images.unsplash.com/photo-1613412140788-9ed674d57c41?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=400',
+    title: 'Blonde',
+    artist: 'Frank Ocean',
+    coverUrl: '/covers/blonde.jpg',
   },
   {
     id: 6,
-    title: 'Vinyl Days',
-    artist: 'Indie Hearts',
-    coverUrl: 'https://images.unsplash.com/photo-1681148772801-2bb2097c1b5d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=400',
+    title: 'Awaken, My Love!',
+    artist: 'Childish Gambino',
+    coverUrl: '/covers/awaken-my-love.jpg',
   },
 ];
 
 const RECENT_SONGS: Song[] = [
   {
     id: 100,
-    title: 'my love my love my love',
-    artist: 'yung kai',
-    album: 'Single',
-    duration: '1:00',
-    coverUrl: 'https://images.unsplash.com/photo-1737914111975-b4d513d783e0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=400',
+    title: 'Rock with You',
+    artist: 'Michael Jackson',
+    album: 'Off the Wall',
+    duration: '3:56',
+    coverUrl: '/covers/rock-with-you.jpg', // cover image file: public/covers/rock-with-you.jpg
   },
   {
     id: 101,
-    title: 'NOT CUTE ANYMORE',
-    artist: 'Illit',
-    album: 'Single',
-    duration: '1:00',
-    coverUrl: 'https://images.unsplash.com/photo-1741705424214-2cdce7244c97?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=400',
+    title: 'Work',
+    artist: 'Rihanna, Drake',
+    album: 'Anti',
+    duration: '3:39',
+    coverUrl: '/covers/work.png', // cover image file: public/covers/work.png
   },
   {
     id: 102,
-    title: 'I bet on losing dogs',
-    artist: 'mitski',
-    album: 'Single',
-    duration: '1:00',
-    coverUrl: 'https://images.unsplash.com/photo-1699777732590-e2bfe8b73626?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=400',
+    title: 'Blinding Lights',
+    artist: 'The Weeknd',
+    album: 'After Hours',
+    duration: '3:20',
+    coverUrl: '/covers/blinding-lights.png', // cover image file: public/covers/blinding-lights.png
   },
   {
     id: 1,
-    title: 'Midnight City',
-    artist: 'The Nocturnes',
-    album: 'Midnight Dreams',
-    duration: '3:45',
-    coverUrl: 'https://images.unsplash.com/photo-1644855640845-ab57a047320e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=400',
+    title: 'Replay',
+    artist: 'Iyaz',
+    album: 'Replay',
+    duration: '3:31',
+    coverUrl: '/covers/replay.jpg', // cover image file: public/covers/replay.jpg
   },
   {
     id: 2,
-    title: 'Strobe',
-    artist: 'deadmau5',
-    album: 'For Lack of a Better Name',
-    duration: '10:32',
-    coverUrl: 'https://images.unsplash.com/photo-1746961135207-faf67473848a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=400',
+    title: 'Down',
+    artist: 'Jay Sean, Lil Wayne',
+    album: 'All or Nothing',
+    duration: '3:42',
+    coverUrl: '/covers/down.jpg', // cover image file: public/covers/down.jpg
+    spotifyUri: 'spotify:track:6cmm1LMvZdB5zsCwX5BjqE',
+    durationSeconds: 200,
   },
 ];
 
@@ -95,6 +98,7 @@ interface MainContentProps {
 export function MainContent({ onPlaySong, onOpenBracelet }: MainContentProps) {
   const [allBracelets, setAllBracelets] = useState(predefinedBracelets);
   const [giftBracelet, setGiftBracelet] = useState<{ songTitle: string; artist: string } | null>(null);
+  const [blendBracelet, setBlendBracelet] = useState<{ songTitle: string; artist: string } | null>(null);
 
   const autoGenerateBracelet = (song: Song) => {
     // Defer to avoid setState during render
@@ -205,11 +209,11 @@ export function MainContent({ onPlaySong, onOpenBracelet }: MainContentProps) {
           const customBraceletsList = Object.entries(customBeads).map(([songId, beads]: [string, any]) => {
             const id = parseInt(songId);
             const songData = {
-              100: { title: 'my love my love my love', artist: 'yung kai' },
-              101: { title: 'NOT CUTE ANYMORE', artist: 'Illit' },
-              102: { title: 'I bet on losing dogs', artist: 'mitski' },
-              1: { title: 'Midnight City', artist: 'The Nocturnes' },
-              2: { title: 'Strobe', artist: 'deadmau5' },
+              100: { title: 'Rock with You', artist: 'Michael Jackson' },
+              101: { title: 'Work', artist: 'Rihanna, Drake' },
+              102: { title: 'Blinding Lights', artist: 'The Weeknd' },
+              1: { title: 'Replay', artist: 'Iyaz' },
+              2: { title: 'Down', artist: 'Jay Sean, Lil Wayne' },
             }[id as 100 | 101 | 102 | 1 | 2];
 
             if (!songData) return null;
@@ -324,6 +328,7 @@ export function MainContent({ onPlaySong, onOpenBracelet }: MainContentProps) {
                   songTitle={bracelet.songTitle}
                   artist={bracelet.artist}
                   onGift={() => setGiftBracelet({ songTitle: bracelet.songTitle, artist: bracelet.artist })}
+                  onBlend={() => setBlendBracelet({ songTitle: bracelet.songTitle, artist: bracelet.artist })}
                 />
               </div>
             ))}
@@ -443,6 +448,14 @@ export function MainContent({ onPlaySong, onOpenBracelet }: MainContentProps) {
           songTitle={giftBracelet.songTitle}
           artist={giftBracelet.artist}
           onClose={() => setGiftBracelet(null)}
+        />
+      )}
+
+      {blendBracelet && (
+        <BlendDialog
+          songTitle={blendBracelet.songTitle}
+          artist={blendBracelet.artist}
+          onClose={() => setBlendBracelet(null)}
         />
       )}
     </div>
