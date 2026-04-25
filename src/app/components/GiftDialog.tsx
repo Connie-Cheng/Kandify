@@ -1,6 +1,6 @@
 import { X, Send, MessageCircle, Share2, Smartphone } from 'lucide-react';
 import { useState } from 'react';
-import { FRIENDS, sendGift, GiftedBracelet, CollabNote } from '../services/social';
+import { FRIENDS, CURRENT_USER, sendGift, GiftedBracelet, CollabNote } from '../services/social';
 import { GiftConfettiScreen } from './GiftConfettiScreen';
 import { CollabBeadScreen, CollabBead } from './CollabBeadScreen';
 
@@ -41,7 +41,10 @@ export function GiftDialog({ songTitle, artist, songId, onClose }: GiftDialogPro
   const [pendingCoverUrl, setPendingCoverUrl] = useState('');
 
   const friend = FRIENDS.find(f => f.name === selectedFriend);
-  const collaborators = FRIENDS.filter(f => selectedCollabs.includes(f.name));
+  const friendCollaborators = FRIENDS.filter(f => selectedCollabs.includes(f.name));
+  // Current user always goes first in the contributor chain so the sender adds
+  // their own bead before any friend collaborator does, then it's sent to recipient.
+  const contributors = [CURRENT_USER, ...friendCollaborators];
   const canSend = !!selectedFriend && !!selectedFormat;
 
   const toggleCollab = (name: string) => {
@@ -59,18 +62,11 @@ export function GiftDialog({ songTitle, artist, songId, onClose }: GiftDialogPro
 
     setFadeOut(true);
 
-    if (collaborators.length > 0) {
-      // Store pending data for after collab flow
-      setPendingBeads(originalBeads);
-      setPendingCoverUrl(coverUrl);
-      setTimeout(() => setPhase('collab'), 320);
-    } else {
-      const gift = sendGift(friend, songTitle, artist, coverUrl, originalBeads, selectedFormat, note.trim() || undefined);
-      setTimeout(() => {
-        setFinalGift(gift);
-        setPhase('done');
-      }, 320);
-    }
+    // Always go through CollabBeadScreen so the current user gets a turn first
+    // (and any friend collaborators after that).
+    setPendingBeads(originalBeads);
+    setPendingCoverUrl(coverUrl);
+    setTimeout(() => setPhase('collab'), 320);
   };
 
   const handleCollabComplete = (addedBeads: CollabBead[], collabNotes: CollabNote[]) => {
@@ -79,11 +75,13 @@ export function GiftDialog({ songTitle, artist, songId, onClose }: GiftDialogPro
       ...pendingBeads,
       ...addedBeads.map(b => ({ color: b.color })),
     ];
+    // collaboratorNames stored on the gift exclude the current user (they are
+    // the sender, listed elsewhere in the gift record).
     const gift = sendGift(
       friend, songTitle, artist, pendingCoverUrl, allBeads, selectedFormat,
       note.trim() || undefined,
       collabNotes.length > 0 ? collabNotes : undefined,
-      collaborators.map(c => c.name),
+      friendCollaborators.map(c => c.name),
     );
     setFinalGift(gift);
     setPhase('done');
@@ -98,7 +96,7 @@ export function GiftDialog({ songTitle, artist, songId, onClose }: GiftDialogPro
       <CollabBeadScreen
         songTitle={songTitle}
         originalBeads={pendingBeads}
-        collaborators={collaborators}
+        collaborators={contributors}
         recipientName={friend.name}
         onComplete={handleCollabComplete}
         onClose={onClose}
@@ -261,7 +259,7 @@ export function GiftDialog({ songTitle, artist, songId, onClose }: GiftDialogPro
           }}
         >
           <Send className="w-4 h-4" />
-          {collaborators.length > 0 ? `Start Collab with ${collaborators.length} friend${collaborators.length > 1 ? 's' : ''}` : 'Send Gift'}
+          {friendCollaborators.length > 0 ? `Start Collab with ${friendCollaborators.length} friend${friendCollaborators.length > 1 ? 's' : ''}` : 'Send Gift'}
         </button>
       </div>
     </div>

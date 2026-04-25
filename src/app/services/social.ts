@@ -100,6 +100,24 @@ const SHARED_SONGS: BlendedTrack[] = [
   { title: 'Work',            artist: 'Rihanna',    source: 'blend', reason: 'A shared favorite' },
 ];
 
+// Strip heavy fields off a bead before persisting to localStorage. AI-generated
+// beads carry a base64 data URL in processedUrl (~100-300KB each); a single
+// gift with 8 image beads can exceed the per-origin localStorage quota
+// (~5-10MB) once a few gifts accumulate. The recipient still sees the bead
+// rendered via its color + shape + material (the SVG fallback path), which is
+// the visual most preset / template beads use anyway.
+const HEAVY_BEAD_FIELDS = new Set([
+  'imageUrl', 'processedUrl', 'imagePrompt',
+]);
+function lightenBead(b: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const k in b) {
+    if (HEAVY_BEAD_FIELDS.has(k)) continue;
+    out[k] = b[k];
+  }
+  return out;
+}
+
 // Send a gift bracelet to a friend.
 // Replace localStorage writes with POST /api/gifts.
 export function sendGift(
@@ -113,6 +131,7 @@ export function sendGift(
   collabNotes?: CollabNote[],
   collaboratorNames?: string[],
 ): GiftedBracelet {
+  const lightBeads = beads.map(b => lightenBead(b as Record<string, unknown>)) as GiftedBracelet['beads'];
   const gift: GiftedBracelet = {
     id: `gift_${Date.now()}`,
     fromUser: CURRENT_USER,
@@ -120,7 +139,7 @@ export function sendGift(
     songTitle,
     artist,
     coverUrl,
-    beads,
+    beads: lightBeads,
     format,
     note,
     collabNotes,
@@ -128,10 +147,27 @@ export function sendGift(
     sentAt: Date.now(),
     opened: false,
   };
-  const sent: GiftedBracelet[] = JSON.parse(localStorage.getItem('gifts_sent') ?? '[]');
-  localStorage.setItem('gifts_sent', JSON.stringify([...sent, gift]));
-  const inbox: GiftedBracelet[] = JSON.parse(localStorage.getItem(`inbox_${toUser.id}`) ?? '[]');
-  localStorage.setItem(`inbox_${toUser.id}`, JSON.stringify([...inbox, gift]));
+  // Persist with quota guard: if localStorage is full, evict the oldest gift
+  // entries until the new one fits, rather than throwing.
+  const writeWithGuard = (key: string, append: GiftedBracelet) => {
+    let arr: GiftedBracelet[] = JSON.parse(localStorage.getItem(key) ?? '[]');
+    arr.push(append);
+    while (arr.length > 0) {
+      try {
+        localStorage.setItem(key, JSON.stringify(arr));
+        return;
+      } catch (e) {
+        // Drop the oldest non-current gift to free space, then retry.
+        if (arr.length <= 1) {
+          console.error(`[sendGift] localStorage quota exceeded for ${key}; the gift may not persist.`, e);
+          return;
+        }
+        arr = [arr[arr.length - 1], ...arr.slice(0, -1)].slice(0, -1);
+      }
+    }
+  };
+  writeWithGuard('gifts_sent', gift);
+  writeWithGuard(`inbox_${toUser.id}`, gift);
   window.dispatchEvent(new Event('storage'));
   return gift;
 }
