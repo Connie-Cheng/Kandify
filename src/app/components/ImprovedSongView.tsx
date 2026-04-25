@@ -8,6 +8,7 @@ import { ShapedBead } from './ShapedBead';
 import { LetterBead } from './LetterBead';
 import { NumberBead } from './NumberBead';
 import { CustomImageBead } from './CustomImageBead';
+import { generateBead as aiGenerateBead } from '../lib/generateBead';
 
 export interface CustomBead extends EnhancedBeadOption {
   timestamp: number;
@@ -91,6 +92,7 @@ export function ImprovedSongView({
   const [noteText, setNoteText] = useState('');
   const [customImages, setCustomImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const initialBeadIdsRef = useRef<Set<string>>(new Set());
 
   const lyrics = songLyrics[song.id] || [];
   const songDuration = song.id === 2 ? 632 : (lyrics.length > 0 ? lyrics[lyrics.length - 1].time + 5 : 60);
@@ -102,6 +104,27 @@ export function ImprovedSongView({
     });
     if (currentIndex !== -1) setCurrentLyricIndex(currentIndex);
   }, [currentTime, lyrics]);
+
+  // Hydrate lyric-bound beads + notes from persisted customBeads on (re)open.
+  // Without this, reopening a song shows empty lyrics even though the beads
+  // are still in localStorage and visible on the homepage Song Charms card.
+  useEffect(() => {
+    const beads = new Map<number, CustomBead>();
+    const notes = new Map<number, string>();
+    const initialIds = new Set<string>();
+    customBeads.forEach(bead => {
+      if (!bead.lyricText) return;
+      let idx = lyrics.findIndex(l => l.time === bead.timestamp);
+      if (idx < 0) idx = lyrics.findIndex(l => l.text === bead.lyricText);
+      if (idx < 0) return;
+      beads.set(idx, bead);
+      initialIds.add(bead.id);
+      if (bead.note) notes.set(idx, bead.note);
+    });
+    setLyricBeads(beads);
+    setLyricNotes(notes);
+    initialBeadIdsRef.current = initialIds;
+  }, [customBeads, lyrics]);
 
   // Click a lyric: select it for bead/note addition + seek to its time
   const handleLyricClick = (index: number) => {
@@ -165,25 +188,67 @@ export function ImprovedSongView({
     setNoteText('');
   };
 
-  // Generate a bead automatically from the selected lyric's content
-  const handleGenerateBead = () => {
+  // Generate a bead from the selected lyric. Tries the AI pipeline first
+  // (Claude metadata + fal.ai image). Falls back to the local keyword generator
+  // if the API isn't reachable so the UX never hard-blocks.
+  const handleGenerateBead = async () => {
     if (selectedLyricIndex === null) return;
-    const lyric = lyrics[selectedLyricIndex];
-    const generated = generateBeadFromLyric(lyric.text, song.title, song.artist);
-    const pendingNote = lyricNotes.get(selectedLyricIndex);
-    const newBead: CustomBead = {
-      ...generated,
+    const lyricIdx = selectedLyricIndex;
+    const lyric = lyrics[lyricIdx];
+    const pendingNote = lyricNotes.get(lyricIdx);
+
+    // 1) Insert a loading placeholder immediately so the user sees feedback.
+    const placeholder: CustomBead = {
+      id: `ai-pending-${Date.now()}`,
+      type: 'shaped',
+      shape: 'circle',
+      color: '#666666',
+      material: 'glossy',
+      size: 'medium',
+      loading: true,
       timestamp: lyric.time,
       lyricText: lyric.text,
       note: pendingNote || undefined,
     };
-    setSelectedBead(generated);
-    setLyricBeads(new Map(lyricBeads.set(selectedLyricIndex, newBead)));
+    setLyricBeads(prev => new Map(prev).set(lyricIdx, placeholder));
     setSelectedLyricIndex(null);
+
+    // 2) Kick off the AI call. On success swap the placeholder with the real bead;
+    //    on failure swap with the keyword fallback so the slot still resolves.
+    try {
+      const generated = await aiGenerateBead({
+        songTitle: song.title,
+        artist: song.artist,
+        fullLyrics: lyrics,
+        moment: { text: lyric.text, time: lyric.time, index: lyricIdx },
+      });
+      const finalBead: CustomBead = {
+        ...generated,
+        timestamp: lyric.time,
+        lyricText: lyric.text,
+        note: pendingNote || undefined,
+      };
+      setLyricBeads(prev => new Map(prev).set(lyricIdx, finalBead));
+      setSelectedBead(generated);
+    } catch (err) {
+      console.warn('[generateBead] AI failed, using keyword fallback:', err);
+      const fb = generateBeadFromLyric(lyric.text, song.title, song.artist);
+      const fallback: CustomBead = {
+        ...fb,
+        timestamp: lyric.time,
+        lyricText: lyric.text,
+        note: pendingNote || undefined,
+      };
+      setLyricBeads(prev => new Map(prev).set(lyricIdx, fallback));
+      setSelectedBead(fb);
+    }
   };
 
   const handleFinish = () => {
-    lyricBeads.forEach(bead => onAddBead(bead));
+    // Only dispatch beads that weren't already persisted; onAddBead appends.
+    lyricBeads.forEach(bead => {
+      if (!initialBeadIdsRef.current.has(bead.id)) onAddBead(bead);
+    });
     onClose();
   };
 
@@ -389,7 +454,9 @@ export function ImprovedSongView({
                             {bead.customImage ? (
                               <CustomImageBead imageUrl={bead.customImage} />
                             ) : bead.type === 'shaped' ? (
-                              <ShapedBead shape={bead.shape!} color={bead.color} material={bead.material} />
+                              <ShapedBead shape={bead.shape!} color={bead.color} material={bead.material}
+                                imageUrl={bead.imageUrl} processedUrl={bead.processedUrl}
+                                loading={bead.loading} error={!!bead.error} />
                             ) : bead.type === 'letter' ? (
                               <LetterBead letter={bead.letter!} color={bead.color} />
                             ) : bead.type === 'number' ? (
@@ -503,7 +570,9 @@ export function ImprovedSongView({
                     {bead.customImage ? (
                       <CustomImageBead imageUrl={bead.customImage} size="small" />
                     ) : bead.type === 'shaped' ? (
-                      <ShapedBead shape={bead.shape!} color={bead.color} material={bead.material} size="small" />
+                      <ShapedBead shape={bead.shape!} color={bead.color} material={bead.material} size="small"
+                        imageUrl={bead.imageUrl} processedUrl={bead.processedUrl}
+                        loading={bead.loading} error={!!bead.error} />
                     ) : bead.type === 'letter' ? (
                       <LetterBead letter={bead.letter!} color={bead.color} size="small" />
                     ) : bead.type === 'number' ? (

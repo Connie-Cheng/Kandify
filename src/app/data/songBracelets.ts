@@ -7,7 +7,10 @@ export interface SongBracelet {
   beads: BeadItem[];
 }
 
-export const songBracelets: SongBracelet[] = [
+// ARCHIVED 2026-04-25: replaced by playlistBracelets.ts (1 bracelet per playlist,
+// 1 song per bead). Kept here for reference / potential reuse as a bead pool.
+// Re-enable by removing the leading underscore on the export below.
+export const _archivedSongBracelets: SongBracelet[] = [
   {
     songId: 1,
     songTitle: 'Replay',

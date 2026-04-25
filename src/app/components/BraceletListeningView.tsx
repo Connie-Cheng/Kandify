@@ -1,4 +1,4 @@
-import { X, Play, Pause } from 'lucide-react';
+import { X, Play, Pause, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ShapedBead } from './ShapedBead';
 import { LetterBead } from './LetterBead';
 import { NumberBead } from './NumberBead';
@@ -17,6 +17,14 @@ interface BraceletListeningViewProps {
   duration: number;
   onSeekToTime?: (time: number) => void;
   cordColor?: string;
+  // Playlist context (only present when opened via a playlist bracelet).
+  // When set, prev/next buttons appear flanking the play button.
+  onPrev?: () => void;
+  onNext?: () => void;
+  canPrev?: boolean;
+  canNext?: boolean;
+  playlistName?: string;
+  playlistPosition?: string;  // e.g. "3 / 8"
 }
 
 export function BraceletListeningView({
@@ -31,6 +39,12 @@ export function BraceletListeningView({
   duration,
   onSeekToTime,
   cordColor = '#ff6b9d',
+  onPrev,
+  onNext,
+  canPrev = false,
+  canNext = false,
+  playlistName,
+  playlistPosition,
 }: BraceletListeningViewProps) {
   const progress = (currentTime / duration) * 100;
 
@@ -53,6 +67,14 @@ export function BraceletListeningView({
       </button>
 
       <div className="max-w-xl w-full space-y-8">
+        {/* Playlist header (only when opened via a playlist bracelet) */}
+        {playlistName && (
+          <div className="text-center -mb-4">
+            <p className="text-xs uppercase tracking-widest text-white/40">{playlistName}</p>
+            {playlistPosition && <p className="text-xs text-white/30 mt-1">{playlistPosition}</p>}
+          </div>
+        )}
+
         {/* Album Art */}
         <div className="aspect-square w-full rounded-3xl overflow-hidden outer-glow-subtle">
           <img src={coverUrl} alt={songTitle} className="w-full h-full object-cover" />
@@ -145,6 +167,10 @@ export function BraceletListeningView({
                         color={bead.color}
                         material={bead.material}
                         size="small"
+                        imageUrl={bead.imageUrl}
+                        processedUrl={bead.processedUrl}
+                        loading={bead.loading}
+                        error={!!bead.error}
                       />
                     ) : bead.type === 'letter' ? (
                       <LetterBead letter={bead.letter!} color={bead.color} size="small" />
@@ -158,8 +184,18 @@ export function BraceletListeningView({
           </div>
         </div>
 
-        {/* Play Button */}
-        <div className="flex justify-center">
+        {/* Transport: prev / play / next. Prev/next only render when playlist context is set. */}
+        <div className="flex justify-center items-center gap-6">
+          {onPrev && (
+            <button
+              onClick={onPrev}
+              disabled={!canPrev}
+              className="w-12 h-12 rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition disabled:opacity-30 disabled:hover:bg-transparent"
+              aria-label="Previous song"
+            >
+              <ChevronLeft className="w-7 h-7" />
+            </button>
+          )}
           <button
             onClick={onTogglePlay}
             className="w-16 h-16 bg-white rounded-full flex items-center justify-center hover:scale-110 transition-all outer-glow-subtle"
@@ -170,6 +206,16 @@ export function BraceletListeningView({
               <Play className="w-8 h-8 text-black fill-black ml-1" />
             )}
           </button>
+          {onNext && (
+            <button
+              onClick={onNext}
+              disabled={!canNext}
+              className="w-12 h-12 rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition disabled:opacity-30 disabled:hover:bg-transparent"
+              aria-label="Next song"
+            >
+              <ChevronRight className="w-7 h-7" />
+            </button>
+          )}
         </div>
       </div>
     </div>

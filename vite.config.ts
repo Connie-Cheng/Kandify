@@ -16,10 +16,18 @@ function figmaAssetResolver() {
   }
 }
 
+// Routes that the React app calls but are actually served by beads-server.js
+// (running separately on :3000). The proxy keeps API keys server-side.
+const BEADS_SERVER = process.env.BEADS_SERVER_URL || 'http://localhost:3000';
+
 export default defineConfig({
   server: {
     host: '127.0.0.1',
     port: 5173,
+    proxy: {
+      '/proxy': { target: BEADS_SERVER, changeOrigin: true },
+      '/ping':  { target: BEADS_SERVER, changeOrigin: true },
+    },
   },
   plugins: [
     figmaAssetResolver(),

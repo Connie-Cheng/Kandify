@@ -1,18 +1,47 @@
-import { Star, Heart, Flower2, Sparkles } from 'lucide-react';
+import { Star, Heart, Flower2, Sparkles, Loader2 } from 'lucide-react';
 
 interface ShapedBeadProps {
   shape: 'star' | 'heart' | 'flower' | 'clover' | 'circle' | 'square';
   color: string;
   material?: 'glossy' | 'matte' | 'metallic' | 'iridescent';
   size?: 'small' | 'medium' | 'large';
+  imageUrl?: string;        // AI-generated bead photo (background already removed)
+  processedUrl?: string;    // preferred over imageUrl
+  loading?: boolean;        // show spinner while AI is generating
+  error?: boolean;          // show error state
 }
 
-export function ShapedBead({ shape, color, material = 'glossy', size = 'medium' }: ShapedBeadProps) {
+export function ShapedBead({ shape, color, material = 'glossy', size = 'medium', imageUrl, processedUrl, loading, error }: ShapedBeadProps) {
   const sizeClasses = {
     small: 'w-7 h-7',
     medium: 'w-10 h-10',
     large: 'w-12 h-12'
   };
+
+  // AI bead branches — render before any of the SVG-shape logic.
+  if (loading) {
+    return (
+      <div className={`${sizeClasses[size]} flex items-center justify-center rounded-full bg-white/10 border border-white/20`}>
+        <Loader2 className="w-1/2 h-1/2 text-white animate-spin" />
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className={`${sizeClasses[size]} flex items-center justify-center rounded-full bg-red-900/40 border border-red-400/40 text-red-200 text-[9px]`}>
+        !
+      </div>
+    );
+  }
+  const photo = processedUrl || imageUrl;
+  if (photo) {
+    return (
+      <div className={`${sizeClasses[size]} flex items-center justify-center`}
+        style={{ filter: `drop-shadow(0 0 6px ${color}55) drop-shadow(0 0 3px ${color}25)` }}>
+        <img src={photo} alt="" className="w-full h-full object-contain pointer-events-none select-none" draggable={false} />
+      </div>
+    );
+  }
 
   const materialClasses = {
     glossy: 'shadow-lg',

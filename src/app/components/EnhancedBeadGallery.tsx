@@ -12,6 +12,21 @@ export interface EnhancedBeadOption {
   letter?: string;
   number?: string;
   customImage?: string;
+  // AI-generated bead fields. When processedUrl/imageUrl is present, the bead is
+  // rendered as a photographic <img> instead of the SVG shape; the shape/color
+  // values are kept for fallback + sidebar swatch.
+  imageUrl?: string;
+  processedUrl?: string;
+  object?: string;
+  mood?: string;
+  era?: string;
+  genre?: string;
+  emotion?: string;
+  aesthetic?: string;
+  artistTraits?: string[];
+  beadType?: 'shape' | 'object';
+  loading?: boolean;
+  error?: string;
 }
 
 const ENHANCED_BEAD_OPTIONS: EnhancedBeadOption[] = [

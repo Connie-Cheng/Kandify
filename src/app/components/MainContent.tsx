@@ -1,8 +1,14 @@
 import { Play, MoreHorizontal } from 'lucide-react';
 import { Song } from '../App';
 import { CharmBracelet } from './CharmBracelet';
-import { songBracelets as predefinedBracelets } from '../data/songBracelets';
+import { _archivedSongBracelets as predefinedBracelets } from '../data/songBracelets';
+import { playlistBracelets, type PlaylistBracelet } from '../data/playlistBracelets';
+import type { BeadItem } from './CharmBracelet';
 import { useEffect, useState } from 'react';
+import { ShapedBead } from './ShapedBead';
+import { LetterBead } from './LetterBead';
+import { NumberBead } from './NumberBead';
+import { CustomImageBead } from './CustomImageBead';
 
 const FEATURED_ALBUMS = [
   {
@@ -93,6 +99,19 @@ interface MainContentProps {
   onOpenBracelet: (songId: number) => void;
   onOpenGift: (songId: number, songTitle: string, artist: string) => void;
   onOpenBlend: (songTitle: string, artist: string) => void;
+  onOpenPlaylist: (playlistId: string) => void;
+}
+
+// Convert a preset playlist's per-song bead (EnhancedBeadOption) into the
+// BeadItem shape that CharmBracelet expects.
+function playlistToBeads(p: PlaylistBracelet): BeadItem[] {
+  return p.songs.map(s => ({
+    type: 'bead',
+    charmType: (s.songBead.shape || 'circle') as any,
+    color: s.songBead.color,
+    material: (s.songBead.material as any) || 'glossy',
+    size: (s.songBead.size as any) || 'medium',
+  }));
 }
 
 const SONG_META: Record<number, { title: string; artist: string; coverUrl: string; album: string; duration: string }> = {
@@ -103,20 +122,43 @@ const SONG_META: Record<number, { title: string; artist: string; coverUrl: strin
   2:   { title: 'Down', artist: 'Jay Sean, Lil Wayne', coverUrl: '/covers/down.jpg', album: 'All or Nothing', duration: '3:42' },
 };
 
+interface CharmBeadPreview {
+  type: 'shaped' | 'letter' | 'number';
+  color: string;
+  shape?: string;
+  material?: 'glossy' | 'matte' | 'metallic' | 'iridescent';
+  letter?: string;
+  number?: string;
+  customImage?: string;
+  imageUrl?: string;
+  processedUrl?: string;
+  loading?: boolean;
+  error?: boolean;
+}
+
 interface SongCharm {
   songId: number;
   title: string; artist: string; coverUrl: string; album: string; duration: string;
   beadCount: number;
-  beadColors: string[];
+  beads: CharmBeadPreview[];
 }
 
-// Phone-charm visual: beads strung on a straight vertical cord with a gold ring at top
-function PhoneCharm({ beadColors }: { beadColors: string[] }) {
-  const cx = 45, svgW = 90;
-  const ringY = 14, cordStart = 24, beadR = 9, gap = 4;
-  const N = Math.max(beadColors.length, 1);
-  const cordEnd = cordStart + N * (beadR * 2 + gap);
-  const svgH = cordEnd + 16;
+// Phone-charm visual: beads strung on a straight vertical cord with a gold ring at top.
+// Uses SVG for the ring/cord/knot and foreignObject slots so each bead reuses the
+// same renderers (ShapedBead/CustomImageBead/...) as the rest of the app — that way
+// AI-generated bead artwork shows up identically here and inside the lyrics view.
+function PhoneCharm({ beads }: { beads: CharmBeadPreview[] }) {
+  const cx = 50, svgW = 100;
+  // Visual: bead intrinsic size = 28px (ShapedBead size="small"), scaled down to
+  // ~22px so each charm reads compact. The foreignObject is intentionally larger
+  // than the bead so the AI bead's drop-shadow glow has room to render — without
+  // this, foreignObject clips the aura into a hard square.
+  const ringY = 14, cordStart = 30, slot = 30;
+  const beadBox = 42;        // foreignObject canvas (gives the aura ~7px breathing room)
+  const beadScale = 0.78;    // visually shrink bead to ~22px
+  const N = Math.max(beads.length, 1);
+  const cordEnd = cordStart + N * slot;
+  const svgH = cordEnd + 18;
 
   return (
     <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`}>
@@ -131,21 +173,53 @@ function PhoneCharm({ beadColors }: { beadColors: string[] }) {
       <line x1={cx} y1={cordStart} x2={cx} y2={cordEnd}
         stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" />
 
-      {/* Beads along the cord */}
+      {/* Beads along the cord — render via foreignObject so we reuse ShapedBead etc. */}
       {Array.from({ length: N }, (_, i) => {
-        const y = cordStart + beadR + i * (beadR * 2 + gap);
-        const color = beadColors[i] ?? null;
-        return color ? (
-          <g key={i}>
-            <circle cx={cx} cy={y} r={beadR} fill={color}
-              style={{ filter: `drop-shadow(0 0 7px ${color}aa)` }} />
-            <ellipse cx={cx - 2.5} cy={y - 3} rx={3} ry={2.2}
-              fill="rgba(255,255,255,0.40)" />
-          </g>
-        ) : (
-          <circle key={i} cx={cx} cy={y} r={7}
-            fill="rgba(255,255,255,0.04)"
-            stroke="rgba(255,255,255,0.12)" strokeWidth="1" strokeDasharray="3 2" />
+        const y = cordStart + slot / 2 + i * slot;
+        const bead = beads[i];
+        if (!bead) {
+          return (
+            <circle key={i} cx={cx} cy={y} r={7}
+              fill="rgba(255,255,255,0.04)"
+              stroke="rgba(255,255,255,0.12)" strokeWidth="1" strokeDasharray="3 2" />
+          );
+        }
+        return (
+          <foreignObject
+            key={i}
+            x={cx - beadBox / 2}
+            y={y - beadBox / 2}
+            width={beadBox}
+            height={beadBox}
+            style={{ overflow: 'visible' }}
+          >
+            <div style={{
+              width: beadBox, height: beadBox,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              overflow: 'visible',
+            }}>
+              <div style={{ transform: `scale(${beadScale})`, transformOrigin: 'center', lineHeight: 0 }}>
+                {bead.customImage ? (
+                  <CustomImageBead imageUrl={bead.customImage} size="small" />
+                ) : bead.type === 'shaped' ? (
+                  <ShapedBead
+                    shape={(bead.shape as any) || 'circle'}
+                    color={bead.color}
+                    material={bead.material}
+                    size="small"
+                    imageUrl={bead.imageUrl}
+                    processedUrl={bead.processedUrl}
+                    loading={bead.loading}
+                    error={!!bead.error}
+                  />
+                ) : bead.type === 'letter' ? (
+                  <LetterBead letter={bead.letter || ''} color={bead.color} size="small" />
+                ) : bead.type === 'number' ? (
+                  <NumberBead number={bead.number || ''} color={bead.color} size="small" />
+                ) : null}
+              </div>
+            </div>
+          </foreignObject>
         );
       })}
 
@@ -160,7 +234,7 @@ interface GiftedCard {
   beads: Array<{ color: string }>;
 }
 
-export function MainContent({ onPlaySong, onOpenBracelet, onOpenGift, onOpenBlend }: MainContentProps) {
+export function MainContent({ onPlaySong, onOpenBracelet, onOpenGift, onOpenBlend, onOpenPlaylist }: MainContentProps) {
   const [allBracelets, setAllBracelets] = useState(predefinedBracelets);
   const [songCharms, setSongCharms] = useState<SongCharm[]>([]);
   const [giftedCards, setGiftedCards] = useState<GiftedCard[]>([]);
@@ -299,6 +373,10 @@ export function MainContent({ onPlaySong, onOpenBracelet, onOpenGift, onOpenBlen
                 content: b.letter || b.number,
                 charmType: b.shape,
                 customImage: b.customImage,
+                imageUrl: b.imageUrl,
+                processedUrl: b.processedUrl,
+                loading: b.loading,
+                error: b.error,
               })),
             };
           }).filter(Boolean);
@@ -344,7 +422,19 @@ export function MainContent({ onPlaySong, onOpenBracelet, onOpenGift, onOpenBlen
             return {
               songId: id, ...meta,
               beadCount: lyricBeads.length,
-              beadColors: lyricBeads.map(b => b.color).slice(0, 12),
+              beads: lyricBeads.slice(0, 12).map(b => ({
+                type: b.type,
+                color: b.color,
+                shape: b.shape,
+                material: b.material,
+                letter: b.letter,
+                number: b.number,
+                customImage: b.customImage,
+                imageUrl: b.imageUrl,
+                processedUrl: b.processedUrl,
+                loading: b.loading,
+                error: b.error,
+              })),
             };
           })
           .filter((c): c is SongCharm => c !== null);
@@ -444,7 +534,7 @@ export function MainContent({ onPlaySong, onOpenBracelet, onOpenGift, onOpenBlen
                   style={{ width: 130 }}
                 >
                   {/* Phone charm visual */}
-                  <PhoneCharm beadColors={charm.beadColors} />
+                  <PhoneCharm beads={charm.beads} />
                   {/* Labels */}
                   <h3 className="font-semibold text-sm truncate w-full text-center mt-3">{charm.title}</h3>
                   <p className="text-xs text-white/45 truncate w-full text-center">{charm.artist}</p>
@@ -457,30 +547,29 @@ export function MainContent({ onPlaySong, onOpenBracelet, onOpenGift, onOpenBlen
           </section>
         )}
 
-        {/* Playlist Bracelets */}
+        {/* Playlist Bracelets — one bracelet per preset playlist, one bead per song */}
         <section className="mb-12">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold">Playlist Bracelets</h2>
-            <p className="text-sm text-white/60">Visualize songs as concert charm bracelets</p>
+            <p className="text-sm text-white/60">Each bead is a song. Tap to play through the playlist.</p>
           </div>
 
           <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-thin">
-            {allBracelets.map((bracelet) => (
+            {playlistBracelets.map((p) => (
               <div
-                key={bracelet.songId}
-                onClick={() => onOpenBracelet(bracelet.songId)}
+                key={p.id}
+                onClick={() => onOpenPlaylist(p.id)}
                 className="cursor-pointer transition-transform hover:scale-105 flex-shrink-0"
               >
                 <CharmBracelet
-                  beads={bracelet.beads}
-                  songTitle={bracelet.songTitle}
-                  artist={bracelet.artist}
-                  onGift={() => onOpenGift(bracelet.songId, bracelet.songTitle, bracelet.artist)}
-                  onBlend={() => onOpenBlend(bracelet.songTitle, bracelet.artist)}
+                  beads={playlistToBeads(p)}
+                  songTitle={p.name}
+                  artist={`${p.songs.length} songs`}
+                  onBlend={() => onOpenBlend(p.name, `${p.songs.length} songs`)}
                 />
               </div>
             ))}
-            {/* Gifted bracelets */}
+            {/* Gifted bracelets — kept for the gifting flow */}
             {giftedCards.map((gift) => (
               <div key={gift.id} className="flex-shrink-0 relative">
                 <CharmBracelet

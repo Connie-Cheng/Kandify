@@ -14,6 +14,10 @@ export interface BeadItem {
   charmType?: 'heart' | 'star' | 'flower' | 'cloud' | 'sparkle' | 'dog' | 'lightning' | 'circle' | 'square' | 'clover';
   size?: 'small' | 'medium' | 'large';
   customImage?: string;
+  imageUrl?: string;
+  processedUrl?: string;
+  loading?: boolean;
+  error?: boolean;
 }
 
 interface CharmBraceletProps {
@@ -105,6 +109,10 @@ export function CharmBracelet({ beads, songTitle, artist, onGift, onBlend }: Cha
                   color={bead.color}
                   material={bead.material as 'glossy' | 'matte' | 'metallic' | 'iridescent'}
                   size="small"
+                  imageUrl={bead.imageUrl}
+                  processedUrl={bead.processedUrl}
+                  loading={bead.loading}
+                  error={!!bead.error}
                 />
               ) : bead.type === 'bead' ? (
                 <RegularBead

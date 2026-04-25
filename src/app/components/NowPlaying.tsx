@@ -77,6 +77,10 @@ export function NowPlaying({ currentSong, isPlaying, onTogglePlayPause, customBe
                     color={bead.color}
                     material={bead.material}
                     size="small"
+                    imageUrl={bead.imageUrl}
+                    processedUrl={bead.processedUrl}
+                    loading={bead.loading}
+                    error={!!bead.error}
                   />
                 ) : bead.type === 'letter' ? (
                   <LetterBead letter={bead.letter!} color={bead.color} size="small" />

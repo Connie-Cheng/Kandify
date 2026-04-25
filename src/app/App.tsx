@@ -10,6 +10,7 @@ import { isSpotifyAuthenticated, handleAuthCallback, spotifyLogout, getAccessTok
 import { GiftDialog } from './components/GiftDialog';
 import { BlendDialog } from './components/BlendDialog';
 import { useSpotifyPlayer } from './spotify/useSpotifyPlayer';
+import { getPlaylistById } from './data/playlistBracelets';
 
 export interface Song {
   id: number;
@@ -40,6 +41,9 @@ function App() {
   const [spotifyAuth, setSpotifyAuth] = useState(isSpotifyAuthenticated);
   const [giftDialog, setGiftDialog] = useState<{ songId: number; songTitle: string; artist: string } | null>(null);
   const [blendDialog, setBlendDialog] = useState<{ songTitle: string; artist: string } | null>(null);
+  // Tracks which playlist (and index within it) the user is currently
+  // playing through, so BraceletListeningView can show prev/next buttons.
+  const [playlistContext, setPlaylistContext] = useState<{ playlistId: string; index: number } | null>(null);
 
   const spotify = useSpotifyPlayer(spotifyAuth);
   // Spotify is active when authenticated, player ready, and current song has a URI
@@ -105,8 +109,17 @@ function App() {
   };
 
   const togglePlayPause = () => {
-    if (spotifyActive) {
-      spotify.togglePlay();
+    // If Spotify is connected + ready + we have a URI:
+    //  - if we're already playing → just toggle (pauses)
+    //  - if not playing yet → kick off playTrack so the first click actually starts.
+    //    This matters when the user opens BraceletListeningView before the
+    //    SDK becomes ready, so the auto-play fired into a no-op.
+    if (spotifyAuth && spotify.isReady && currentSong?.spotifyUri) {
+      if (isPlaying) {
+        spotify.togglePlay();
+      } else {
+        spotify.playTrack(currentSong.spotifyUri);
+      }
     } else {
       setIsPlaying(prev => !prev);
     }
@@ -115,7 +128,28 @@ function App() {
   const handleAddBead = (bead: CustomBead) => {
     if (!currentSong) return;
     setCustomBeads((prev) => {
-      const updated = { ...prev, [currentSong.id]: [...(prev[currentSong.id] || []), bead] };
+      const existing = prev[currentSong.id] || [];
+      // Replace any prior bead bound to the same lyric (same lyricText + timestamp);
+      // otherwise append. Without this, regenerating a bead for a lyric leaves the
+      // old one behind and inflates the "X moments" counter on the homepage.
+      const lyricKey = bead.lyricText && bead.timestamp != null
+        ? `${bead.timestamp}|${bead.lyricText}`
+        : null;
+      let next: CustomBead[];
+      if (lyricKey) {
+        const replaceIdx = existing.findIndex(b =>
+          b.lyricText && b.timestamp != null && `${b.timestamp}|${b.lyricText}` === lyricKey
+        );
+        if (replaceIdx >= 0) {
+          next = existing.slice();
+          next[replaceIdx] = bead;
+        } else {
+          next = [...existing, bead];
+        }
+      } else {
+        next = [...existing, bead];
+      }
+      const updated = { ...prev, [currentSong.id]: next };
       // Only persist user-added beads, not predefined ones
       const toSave: Record<number, CustomBead[]> = {};
       for (const [id, beads] of Object.entries(updated) as [string, CustomBead[]][]) {
@@ -131,10 +165,35 @@ function App() {
   useEffect(() => {
     const loadBeads = () => {
       const saved = localStorage.getItem('customBeads');
-      if (saved) {
-        try { setCustomBeads(JSON.parse(saved)); }
-        catch (e) { console.error('Failed to load custom beads', e); }
-      }
+      if (!saved) return;
+      try {
+        const parsed: Record<number, CustomBead[]> = JSON.parse(saved);
+        // One-time dedup: collapse duplicate beads bound to the same lyric
+        // (same lyricText + timestamp). Last-write-wins so the most recent
+        // regeneration sticks. Fixes stale counts from before the dedup fix.
+        let dirty = false;
+        const cleaned: Record<number, CustomBead[]> = {};
+        for (const [id, beads] of Object.entries(parsed) as [string, CustomBead[]][]) {
+          const seen = new Map<string, number>();
+          const out: CustomBead[] = [];
+          for (const b of beads) {
+            const key = b.lyricText && b.timestamp != null ? `${b.timestamp}|${b.lyricText}` : null;
+            if (key && seen.has(key)) {
+              out[seen.get(key)!] = b; // overwrite previous occurrence
+              dirty = true;
+            } else {
+              if (key) seen.set(key, out.length);
+              out.push(b);
+            }
+          }
+          cleaned[Number(id)] = out;
+        }
+        setCustomBeads(cleaned);
+        if (dirty) {
+          localStorage.setItem('customBeads', JSON.stringify(cleaned));
+          window.dispatchEvent(new Event('storage'));
+        }
+      } catch (e) { console.error('Failed to load custom beads', e); }
     };
     loadBeads();
     window.addEventListener('storage', loadBeads);
@@ -245,7 +304,7 @@ function App() {
     );
     if (!hasUserBeads) {
       const module = await import('./data/songBracelets');
-      const bracelet = module.songBracelets.find(b => b.songId === songId);
+      const bracelet = module._archivedSongBracelets.find(b => b.songId === songId);
       if (bracelet) {
         const predefinedNotes: Record<number, Record<number, string>> = {
           1: {
@@ -287,6 +346,90 @@ function App() {
     } else {
       setIsPlaying(true);
     }
+  };
+
+  // Plays a song from a playlist into the existing BraceletListeningView. Used
+  // for playlist songs that aren't in the hardcoded songData map (the dummies
+  // 1001+) — resolves cover + Spotify URI from /search at runtime.
+  const playPlaylistSong = async (playlistId: string, index: number) => {
+    const pl = getPlaylistById(playlistId);
+    if (!pl) return;
+    const ps = pl.songs[index];
+    if (!ps) return;
+
+    // If this song has a hardcoded entry (the 5 with local audio), prefer it.
+    const hardcoded: Record<number, true> = { 1: true, 2: true, 100: true, 101: true, 102: true };
+    if (hardcoded[ps.songId]) {
+      setPlaylistContext({ playlistId, index });
+      await handleOpenBracelet(ps.songId);
+      return;
+    }
+
+    // Otherwise resolve via Spotify search (cover + uri) and build a Song.
+    let coverUrl = ps.coverUrl || '';
+    let spotifyUri: string | undefined;
+    let durationSeconds = 200;
+    let audioUrl: string | undefined;
+    const token = await getAccessToken();
+    if (token) {
+      try {
+        const artist = ps.artist.split(',')[0].trim();
+        const q = encodeURIComponent(`track:${ps.title} artist:${artist}`);
+        const res = await fetch(`https://api.spotify.com/v1/search?q=${q}&type=track&limit=1`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const json = await res.json();
+        const track = json.tracks?.items?.[0];
+        if (track) {
+          spotifyUri = track.uri;
+          coverUrl = track.album?.images?.[0]?.url || coverUrl;
+          durationSeconds = Math.round(track.duration_ms / 1000);
+          audioUrl = track.preview_url ?? undefined;
+        }
+      } catch (e) { console.error('Failed to resolve playlist song via Spotify:', e); }
+    }
+
+    const song: Song = {
+      id: ps.songId,
+      title: ps.title,
+      artist: ps.artist,
+      album: ps.album || 'Single',
+      duration: `${Math.floor(durationSeconds / 60)}:${String(durationSeconds % 60).padStart(2, '0')}`,
+      coverUrl,
+      audioUrl,
+      spotifyUri,
+      durationSeconds,
+    };
+
+    setCurrentSong(song);
+    setPlaylistContext({ playlistId, index });
+    setShowBraceletView(true);
+    setCurrentTime(0);
+    if (spotifyAuth && spotify.isReady && spotifyUri) {
+      spotify.playTrack(spotifyUri);
+    } else {
+      setIsPlaying(true);
+    }
+  };
+
+  const handleOpenPlaylist = (playlistId: string) => {
+    void playPlaylistSong(playlistId, 0);
+  };
+
+  const handlePlaylistPrev = () => {
+    if (!playlistContext) return;
+    const next = Math.max(0, playlistContext.index - 1);
+    if (next === playlistContext.index) return;
+    void playPlaylistSong(playlistContext.playlistId, next);
+  };
+
+  const handlePlaylistNext = () => {
+    if (!playlistContext) return;
+    const pl = getPlaylistById(playlistContext.playlistId);
+    if (!pl) return;
+    const next = Math.min(pl.songs.length - 1, playlistContext.index + 1);
+    if (next === playlistContext.index) return;
+    void playPlaylistSong(playlistContext.playlistId, next);
   };
 
   // Load HTML audio source when song changes (only when Spotify is not active)
@@ -350,6 +493,7 @@ function App() {
           onOpenBracelet={handleOpenBracelet}
           onOpenGift={(songId, songTitle, artist) => setGiftDialog({ songId, songTitle, artist })}
           onOpenBlend={(songTitle, artist) => setBlendDialog({ songTitle, artist })}
+          onOpenPlaylist={handleOpenPlaylist}
         />
       </div>
       <div className="relative z-10">
@@ -386,11 +530,20 @@ function App() {
           beads={currentSongBeads}
           isPlaying={isPlaying}
           onTogglePlay={togglePlayPause}
-          onClose={() => setShowBraceletView(false)}
+          onClose={() => { setShowBraceletView(false); setPlaylistContext(null); }}
           currentTime={currentTime}
           duration={songDuration}
           onSeekToTime={handleSeekToTime}
           cordColor={currentCordColor}
+          onPrev={playlistContext ? handlePlaylistPrev : undefined}
+          onNext={playlistContext ? handlePlaylistNext : undefined}
+          canPrev={playlistContext ? playlistContext.index > 0 : false}
+          canNext={!!(playlistContext && (() => {
+            const pl = getPlaylistById(playlistContext.playlistId);
+            return pl && playlistContext.index < pl.songs.length - 1;
+          })())}
+          playlistName={playlistContext ? getPlaylistById(playlistContext.playlistId)?.name : undefined}
+          playlistPosition={playlistContext ? `${playlistContext.index + 1} / ${getPlaylistById(playlistContext.playlistId)?.songs.length ?? 0}` : undefined}
         />
       )}
 
@@ -414,6 +567,7 @@ function App() {
           onClose={() => setBlendDialog(null)}
         />
       )}
+
     </div>
   );
 }
