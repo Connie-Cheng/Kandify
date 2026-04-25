@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { X, Sparkles } from 'lucide-react';
+import { FRIENDS, saveBlendSession, BlendSession } from '../services/social';
+import { BlendAnimationScreen } from './BlendAnimationScreen';
 
 interface BlendDialogProps {
   songTitle: string;
@@ -7,70 +9,60 @@ interface BlendDialogProps {
   onClose: () => void;
 }
 
-const FRIENDS = [
-  { name: 'Jessica', color: '#f472b6', gradient: 'from-pink-400 to-pink-600' },
-  { name: 'Connie',  color: '#60a5fa', gradient: 'from-blue-400 to-blue-600' },
-  { name: 'Jack',    color: '#a78bfa', gradient: 'from-violet-400 to-violet-600' },
-  { name: 'Alex',    color: '#fbbf24', gradient: 'from-yellow-400 to-yellow-600' },
-];
-
 const MY_COLOR = '#ff6b9d';
 const MY_BEADS = [MY_COLOR, '#ff1744', '#ffc1e3', '#ff80ab', '#c2185b', '#ff4081', '#ffb3d9', '#f50057'];
 const FRIEND_BEAD_SETS: Record<string, string[]> = {
   Jessica: ['#f472b6', '#ec4899', '#fbcfe8', '#db2777', '#fda4af', '#f9a8d4', '#be185d', '#ff80ab'],
-  Connie:  ['#60a5fa', '#3b82f6', '#93c5fd', '#1d4ed8', '#bfdbfe', '#2563eb', '#dbeafe', '#60a5fa'],
+  Kida:    ['#60a5fa', '#3b82f6', '#93c5fd', '#1d4ed8', '#bfdbfe', '#2563eb', '#dbeafe', '#60a5fa'],
   Jack:    ['#a78bfa', '#8b5cf6', '#c4b5fd', '#7c3aed', '#ddd6fe', '#6d28d9', '#ede9fe', '#a78bfa'],
-  Alex:    ['#fbbf24', '#f59e0b', '#fde68a', '#d97706', '#fef3c7', '#b45309', '#fef9c3', '#fbbf24'],
+  Sean:    ['#fbbf24', '#f59e0b', '#fde68a', '#d97706', '#fef3c7', '#b45309', '#fef9c3', '#fbbf24'],
 };
 
 function BeadRing({ beads, color, label, x }: { beads: string[]; color: string; label: string; x: number }) {
   const r = 52;
-  const cx = x;
-  const cy = 80;
-
   return (
     <g>
-      {/* Glow ring */}
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth="1.5"
+      <circle cx={x} cy={88} r={r} fill="none" stroke={color} strokeWidth="1.5"
         style={{ filter: `drop-shadow(0 0 6px ${color})` }} opacity="0.5" />
-      {/* Beads */}
       {beads.map((c, i) => {
         const angle = (2 * Math.PI * i) / beads.length - Math.PI / 2;
-        const bx = cx + Math.cos(angle) * r;
-        const by = cy + Math.sin(angle) * r;
+        const bx = x + Math.cos(angle) * r;
+        const by = 88 + Math.sin(angle) * r;
         return (
           <circle key={i} cx={bx} cy={by} r={5} fill={c}
             style={{ filter: `drop-shadow(0 0 4px ${c})` }} />
         );
       })}
-      {/* Label */}
-      <text x={cx} y={cy + r + 16} textAnchor="middle" fill="rgba(255,255,255,0.5)" fontSize="9">{label}</text>
+      <text x={x} y={88 + r + 16} textAnchor="middle" fill="rgba(255,255,255,0.5)" fontSize="9">{label}</text>
     </g>
   );
 }
 
 export function BlendDialog({ songTitle, artist, onClose }: BlendDialogProps) {
   const [selectedFriend, setSelectedFriend] = useState<string | null>(null);
-  const [blended, setBlended] = useState(false);
+  const [blendSession, setBlendSession] = useState<BlendSession | null>(null);
 
   const friend = FRIENDS.find(f => f.name === selectedFriend);
   const friendBeads = selectedFriend ? FRIEND_BEAD_SETS[selectedFriend] : null;
 
-  // Animate rings: apart → together
-  const leftX = blended ? 105 : 75;
-  const rightX = blended ? 115 : 145;
+  const [fadeOut, setFadeOut] = useState(false);
 
   const handleBlend = () => {
-    if (!selectedFriend) return;
-    setBlended(true);
-    setTimeout(() => {
-      alert(`Blended your bracelet with ${selectedFriend} on "${songTitle}"!`);
-      onClose();
-    }, 1800);
+    if (!friend) return;
+    const session = saveBlendSession(friend);
+    setFadeOut(true);
+    setTimeout(() => setBlendSession(session), 320);
   };
 
+  if (blendSession) {
+    return <BlendAnimationScreen session={blendSession} onClose={onClose} />;
+  }
+
   return (
-    <div className="fixed inset-0 bg-black/90 backdrop-blur-xl z-50 flex items-center justify-center p-8">
+    <div
+      className="fixed inset-0 bg-black/90 backdrop-blur-xl z-50 flex items-center justify-center p-8"
+      style={{ opacity: fadeOut ? 0 : 1, transition: 'opacity 0.3s ease-out', pointerEvents: fadeOut ? 'none' : 'all' }}
+    >
       <div className="glass-card rounded-3xl p-6 w-full max-w-md outer-glow-soft inner-glow">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold">Blend with Friend</h2>
@@ -85,42 +77,27 @@ export function BlendDialog({ songTitle, artist, onClose }: BlendDialogProps) {
           <p className="text-sm text-white/60">{artist}</p>
         </div>
 
-        {/* Blend visual */}
+        {/* Bead ring preview */}
         <div className="flex justify-center mb-6">
-          <svg width="220" height="110" viewBox="0 0 220 110">
+          <svg width="220" height="160" viewBox="0 0 220 160">
             <defs>
               <radialGradient id="blendGlow" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor={friend?.color ?? '#ff6b9d'} stopOpacity="0.6" />
+                <stop offset="0%" stopColor={friend?.color ?? '#ff6b9d'} stopOpacity="0.5" />
                 <stop offset="100%" stopColor={friend?.color ?? '#ff6b9d'} stopOpacity="0" />
               </radialGradient>
             </defs>
 
-            {/* Glow at intersection when blending */}
-            {blended && (
-              <ellipse cx="110" cy="80" rx="28" ry="28"
-                fill="url(#blendGlow)"
-                style={{ animation: 'pulse 0.8s ease-in-out infinite' }} />
+            {selectedFriend && (
+              <ellipse cx="110" cy="88" rx="22" ry="22" fill="url(#blendGlow)" />
             )}
 
-            <g style={{ transition: 'all 0.8s ease-in-out' }}>
-              <BeadRing beads={MY_BEADS} color={MY_COLOR} label="You" x={leftX} />
-            </g>
-            <g style={{ transition: 'all 0.8s ease-in-out' }}>
-              <BeadRing
-                beads={friendBeads ?? ['#ffffff22', '#ffffff22', '#ffffff22', '#ffffff22', '#ffffff22', '#ffffff22', '#ffffff22', '#ffffff22']}
-                color={friend?.color ?? 'rgba(255,255,255,0.15)'}
-                label={selectedFriend ?? 'Friend'}
-                x={rightX}
-              />
-            </g>
-
-            {/* Sparkles when blended */}
-            {blended && (
-              <>
-                <text x="100" y="30" fontSize="12" style={{ animation: 'pulse 0.6s ease-in-out infinite' }}>✨</text>
-                <text x="115" y="20" fontSize="10" style={{ animation: 'pulse 0.9s ease-in-out infinite' }}>✨</text>
-              </>
-            )}
+            <BeadRing beads={MY_BEADS} color={MY_COLOR} label="You" x={75} />
+            <BeadRing
+              beads={friendBeads ?? ['#ffffff18','#ffffff18','#ffffff18','#ffffff18','#ffffff18','#ffffff18','#ffffff18','#ffffff18']}
+              color={friend?.color ?? 'rgba(255,255,255,0.12)'}
+              label={selectedFriend ?? 'Friend'}
+              x={145}
+            />
           </svg>
         </div>
 
@@ -131,7 +108,7 @@ export function BlendDialog({ songTitle, artist, onClose }: BlendDialogProps) {
             {FRIENDS.map((f) => (
               <button
                 key={f.name}
-                onClick={() => { setSelectedFriend(f.name); setBlended(false); }}
+                onClick={() => setSelectedFriend(f.name)}
                 className={`w-full text-left px-4 py-3 rounded-2xl transition-all ${
                   selectedFriend === f.name ? 'glass-button' : 'glass-card hover:glass-button'
                 }`}
@@ -153,19 +130,19 @@ export function BlendDialog({ songTitle, artist, onClose }: BlendDialogProps) {
 
         <button
           onClick={handleBlend}
-          disabled={!selectedFriend || blended}
+          disabled={!selectedFriend}
           className="w-full py-3 rounded-full font-medium transition-all hover:scale-105 flex items-center justify-center gap-2"
           style={{
             background: selectedFriend
-              ? `radial-gradient(circle at 30% 50%, ${friend?.color}, #c77dff)`
+              ? `radial-gradient(circle at 30% 50%, ${friend?.color}cc, #9a58cccc)`
               : 'rgba(255,255,255,0.1)',
-            boxShadow: selectedFriend ? `0 0 20px ${friend?.color}66` : 'none',
-            opacity: selectedFriend && !blended ? 1 : 0.5,
-            cursor: selectedFriend && !blended ? 'pointer' : 'not-allowed',
+            boxShadow: selectedFriend ? `0 0 14px ${friend?.color}44` : 'none',
+            opacity: selectedFriend ? 1 : 0.5,
+            cursor: selectedFriend ? 'pointer' : 'not-allowed',
           }}
         >
           <Sparkles className="w-4 h-4" />
-          {blended ? 'Blending...' : 'Blend Bracelets'}
+          Blend Bracelets
         </button>
       </div>
     </div>

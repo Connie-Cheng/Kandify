@@ -6,7 +6,9 @@ import { ImprovedSongView, CustomBead } from './components/ImprovedSongView';
 import { BraceletListeningView } from './components/BraceletListeningView';
 import { AssetUploader } from './components/AssetUploader';
 import { AnimatedBackground } from './components/AnimatedBackground';
-import { isSpotifyAuthenticated, handleAuthCallback, spotifyLogout } from './spotify/auth';
+import { isSpotifyAuthenticated, handleAuthCallback, spotifyLogout, getAccessToken } from './spotify/auth';
+import { GiftDialog } from './components/GiftDialog';
+import { BlendDialog } from './components/BlendDialog';
 import { useSpotifyPlayer } from './spotify/useSpotifyPlayer';
 
 export interface Song {
@@ -36,6 +38,8 @@ function App() {
   const [audioElement] = useState(() => new Audio());
   const [audioLoadFailed, setAudioLoadFailed] = useState(false);
   const [spotifyAuth, setSpotifyAuth] = useState(isSpotifyAuthenticated);
+  const [giftDialog, setGiftDialog] = useState<{ songId: number; songTitle: string; artist: string } | null>(null);
+  const [blendDialog, setBlendDialog] = useState<{ songTitle: string; artist: string } | null>(null);
 
   const spotify = useSpotifyPlayer(spotifyAuth);
   // Spotify is active when authenticated, player ready, and current song has a URI
@@ -65,11 +69,31 @@ function App() {
     setIsPlaying(spotify.isPlaying);
   }, [spotify.positionSeconds, spotify.isPlaying, spotifyActive]);
 
-  const handlePlaySong = (song: Song) => {
-    setCurrentSong(song);
+  const handlePlaySong = async (song: Song) => {
+    let resolvedSong = song;
+    if (!song.audioUrl && !song.spotifyUri) {
+      const token = await getAccessToken();
+      if (token) {
+        try {
+          const artist = song.artist.split(',')[0].trim();
+          const q = encodeURIComponent(`track:${song.title} artist:${artist}`);
+          const res = await fetch(`https://api.spotify.com/v1/search?q=${q}&type=track&limit=1`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const json = await res.json();
+          const track = json.tracks?.items?.[0];
+          if (track?.preview_url) {
+            resolvedSong = { ...song, audioUrl: track.preview_url };
+          }
+        } catch (e) {
+          console.error('Failed to fetch Spotify preview:', e);
+        }
+      }
+    }
+    setCurrentSong(resolvedSong);
     setCurrentTime(0);
-    if (spotifyAuth && spotify.isReady && song.spotifyUri) {
-      spotify.playTrack(song.spotifyUri);
+    if (spotifyAuth && spotify.isReady && resolvedSong.spotifyUri) {
+      spotify.playTrack(resolvedSong.spotifyUri);
     } else {
       setIsPlaying(true);
     }
@@ -286,7 +310,12 @@ function App() {
           spotifyReady={spotify.isReady}
           onSpotifyLogout={() => { spotifyLogout(); setSpotifyAuth(false); }}
         />
-        <MainContent onPlaySong={handlePlaySong} onOpenBracelet={handleOpenBracelet} />
+        <MainContent
+          onPlaySong={handlePlaySong}
+          onOpenBracelet={handleOpenBracelet}
+          onOpenGift={(songId, songTitle, artist) => setGiftDialog({ songId, songTitle, artist })}
+          onOpenBlend={(songTitle, artist) => setBlendDialog({ songTitle, artist })}
+        />
       </div>
       <div className="relative z-10">
         <NowPlaying
@@ -330,6 +359,23 @@ function App() {
 
       {showAssetUploader && (
         <AssetUploader onClose={() => setShowAssetUploader(false)} />
+      )}
+
+      {giftDialog && (
+        <GiftDialog
+          songTitle={giftDialog.songTitle}
+          artist={giftDialog.artist}
+          songId={giftDialog.songId}
+          onClose={() => setGiftDialog(null)}
+        />
+      )}
+
+      {blendDialog && (
+        <BlendDialog
+          songTitle={blendDialog.songTitle}
+          artist={blendDialog.artist}
+          onClose={() => setBlendDialog(null)}
+        />
       )}
     </div>
   );

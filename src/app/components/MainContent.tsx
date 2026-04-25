@@ -1,8 +1,6 @@
-import { Play, MoreHorizontal, Sparkles } from 'lucide-react';
+import { Play, MoreHorizontal } from 'lucide-react';
 import { Song } from '../App';
 import { CharmBracelet } from './CharmBracelet';
-import { GiftDialog } from './GiftDialog';
-import { BlendDialog } from './BlendDialog';
 import { songBracelets as predefinedBracelets } from '../data/songBracelets';
 import { useEffect, useState } from 'react';
 
@@ -93,12 +91,12 @@ const RECENT_SONGS: Song[] = [
 interface MainContentProps {
   onPlaySong: (song: Song) => void;
   onOpenBracelet: (songId: number) => void;
+  onOpenGift: (songId: number, songTitle: string, artist: string) => void;
+  onOpenBlend: (songTitle: string, artist: string) => void;
 }
 
-export function MainContent({ onPlaySong, onOpenBracelet }: MainContentProps) {
+export function MainContent({ onPlaySong, onOpenBracelet, onOpenGift, onOpenBlend }: MainContentProps) {
   const [allBracelets, setAllBracelets] = useState(predefinedBracelets);
-  const [giftBracelet, setGiftBracelet] = useState<{ songTitle: string; artist: string } | null>(null);
-  const [blendBracelet, setBlendBracelet] = useState<{ songTitle: string; artist: string } | null>(null);
 
   const autoGenerateBracelet = (song: Song) => {
     // Defer to avoid setState during render
@@ -327,8 +325,8 @@ export function MainContent({ onPlaySong, onOpenBracelet }: MainContentProps) {
                   beads={bracelet.beads}
                   songTitle={bracelet.songTitle}
                   artist={bracelet.artist}
-                  onGift={() => setGiftBracelet({ songTitle: bracelet.songTitle, artist: bracelet.artist })}
-                  onBlend={() => setBlendBracelet({ songTitle: bracelet.songTitle, artist: bracelet.artist })}
+                  onGift={() => onOpenGift(bracelet.songId, bracelet.songTitle, bracelet.artist)}
+                  onBlend={() => onOpenBlend(bracelet.songTitle, bracelet.artist)}
                 />
               </div>
             ))}
@@ -381,22 +379,6 @@ export function MainContent({ onPlaySong, onOpenBracelet }: MainContentProps) {
                 </div>
 
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    autoGenerateBracelet(song);
-                  }}
-                  className="opacity-0 group-hover:opacity-100 px-3 py-1.5 rounded-full text-xs font-medium text-white transition-all flex items-center gap-1.5"
-                  style={{
-                    background: 'radial-gradient(circle at 30% 50%, #9c27b0, #ff006e)',
-                    boxShadow: '0 0 20px rgba(156, 39, 176, 0.4), 0 0 40px rgba(255, 0, 110, 0.2)'
-                  }}
-                  title="Auto-generate bracelet"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  Auto Bracelet
-                </button>
-
-                <button
                   className="opacity-0 group-hover:opacity-100 text-white/60 hover:text-white transition-opacity"
                   onClick={(e) => e.stopPropagation()}
                 >
@@ -443,21 +425,6 @@ export function MainContent({ onPlaySong, onOpenBracelet }: MainContentProps) {
         </section>
       </div>
 
-      {giftBracelet && (
-        <GiftDialog
-          songTitle={giftBracelet.songTitle}
-          artist={giftBracelet.artist}
-          onClose={() => setGiftBracelet(null)}
-        />
-      )}
-
-      {blendBracelet && (
-        <BlendDialog
-          songTitle={blendBracelet.songTitle}
-          artist={blendBracelet.artist}
-          onClose={() => setBlendBracelet(null)}
-        />
-      )}
     </div>
   );
 }
