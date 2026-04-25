@@ -14,31 +14,13 @@ interface NowPlayingProps {
   customBeads?: CustomBead[];
   onOpenSongDetail?: () => void;
   cordColor?: string;
+  currentTime?: number;
+  duration?: number;
 }
 
-export function NowPlaying({ currentSong, isPlaying, onTogglePlayPause, customBeads = [], onOpenSongDetail, cordColor }: NowPlayingProps) {
-  const [progress, setProgress] = useState(0);
+export function NowPlaying({ currentSong, isPlaying, onTogglePlayPause, customBeads = [], onOpenSongDetail, cordColor, currentTime = 0, duration = 0 }: NowPlayingProps) {
   const [volume, setVolume] = useState(70);
   const [isLiked, setIsLiked] = useState(false);
-
-  useEffect(() => {
-    if (!isPlaying || !currentSong) return;
-
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) return 0;
-        return prev + 0.5;
-      });
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, [isPlaying, currentSong]);
-
-  useEffect(() => {
-    if (currentSong) {
-      setProgress(0);
-    }
-  }, [currentSong]);
 
   if (!currentSong) {
     return (
@@ -54,8 +36,8 @@ export function NowPlaying({ currentSong, isPlaying, onTogglePlayPause, customBe
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const currentTime = (progress / 100) * 180; // Assuming 3 minutes
-  const totalTime = 180;
+  const totalTime = duration > 0 ? duration : 1;
+  const progress = Math.min((currentTime / totalTime) * 100, 100);
 
   return (
     <div className="h-24 glass-morph outer-glow-soft">

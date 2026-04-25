@@ -82,8 +82,13 @@ function App() {
           });
           const json = await res.json();
           const track = json.tracks?.items?.[0];
-          if (track?.preview_url) {
-            resolvedSong = { ...song, audioUrl: track.preview_url };
+          if (track) {
+            resolvedSong = {
+              ...song,
+              spotifyUri: track.uri,
+              audioUrl: track.preview_url ?? undefined,
+              durationSeconds: Math.round(track.duration_ms / 1000),
+            };
           }
         } catch (e) {
           console.error('Failed to fetch Spotify preview:', e);
@@ -192,23 +197,53 @@ function App() {
     const data = songData[songId as keyof typeof songData];
     if (!data) { console.error('Song not found:', songId); return; }
 
-    // localStorage upload takes priority over static file
-    const audioUrl = localStorage.getItem(`audio_${songId}`) || data.audioUrl || undefined;
+    // Resolve Spotify URI + preview URL (fetch from API if not hardcoded)
+    let resolvedUri = data.spotifyUri || '';
+    let resolvedAudio = localStorage.getItem(`audio_${songId}`) || '';
+    let resolvedDuration = data.durationSeconds;
+
+    if (!resolvedUri) {
+      const token = await getAccessToken();
+      if (token) {
+        try {
+          const artist = data.artist.split(',')[0].trim();
+          const q = encodeURIComponent(`track:${data.title} artist:${artist}`);
+          const res = await fetch(`https://api.spotify.com/v1/search?q=${q}&type=track&limit=1`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const json = await res.json();
+          const track = json.tracks?.items?.[0];
+          if (track) {
+            resolvedUri = track.uri;
+            if (!resolvedAudio) resolvedAudio = track.preview_url ?? '';
+            resolvedDuration = Math.round(track.duration_ms / 1000);
+          }
+        } catch (e) {
+          console.error('Failed to fetch Spotify track for bracelet:', e);
+        }
+      }
+    }
+
+    const audioUrl = resolvedAudio || data.audioUrl || undefined;
 
     const song: Song = {
       id: songId,
       title: data.title,
       artist: data.artist,
       album: 'Single',
-      duration: `${Math.floor(data.durationSeconds / 60)}:${String(data.durationSeconds % 60).padStart(2, '0')}`,
+      duration: `${Math.floor(resolvedDuration / 60)}:${String(resolvedDuration % 60).padStart(2, '0')}`,
       coverUrl: data.coverUrl,
       audioUrl,
-      spotifyUri: data.spotifyUri || undefined,
-      durationSeconds: data.durationSeconds,
+      spotifyUri: resolvedUri || undefined,
+      durationSeconds: resolvedDuration,
     };
 
-    // Load predefined beads if no custom beads exist yet
-    if (!customBeads[songId]) {
+    // Load predefined beads unless the user has manually added their own beads
+    // (auto-generated beads with id "auto-*" are ignored so they don't block predefined spacing)
+    const hasUserBeads = customBeads[songId]?.some(
+      (b: CustomBead) => !b.id.startsWith('predefined-') && !b.id.startsWith('auto-')
+    );
+    if (!hasUserBeads) {
       const module = await import('./data/songBracelets');
       const bracelet = module.songBracelets.find(b => b.songId === songId);
       if (bracelet) {
@@ -256,7 +291,7 @@ function App() {
 
   // Load HTML audio source when song changes (only when Spotify is not active)
   useEffect(() => {
-    if (!currentSong?.audioUrl || (spotifyAuth && spotify.isReady)) return;
+    if (!currentSong?.audioUrl || spotifyActive) return;
     setAudioLoadFailed(false);
     audioElement.src = currentSong.audioUrl;
     audioElement.load();
@@ -267,7 +302,7 @@ function App() {
 
   // Sync currentTime from HTML audio element
   useEffect(() => {
-    if (!currentSong?.audioUrl || (spotifyAuth && spotify.isReady)) return;
+    if (!currentSong?.audioUrl || spotifyActive) return;
     const handleTimeUpdate = () => setCurrentTime(audioElement.currentTime);
     audioElement.addEventListener('timeupdate', handleTimeUpdate);
     return () => audioElement.removeEventListener('timeupdate', handleTimeUpdate);
@@ -275,7 +310,7 @@ function App() {
 
   // Control HTML audio play/pause (only when Spotify is not the active source)
   useEffect(() => {
-    if (!currentSong?.audioUrl || (spotifyAuth && spotify.isReady)) return;
+    if (!currentSong?.audioUrl || spotifyActive) return;
     if (isPlaying) {
       audioElement.play().catch(err => console.error('Audio playback error:', err));
     } else {
@@ -285,7 +320,7 @@ function App() {
 
   // Fallback timer when no audio (or audio failed) and Spotify is not active
   useEffect(() => {
-    if (!isPlaying || !currentSong || (spotifyAuth && spotify.isReady)) return;
+    if (!isPlaying || !currentSong || spotifyActive) return;
     if (currentSong.audioUrl && !audioLoadFailed) return;
     const maxDuration = currentSong.durationSeconds ?? 60;
     const interval = setInterval(() => {
@@ -325,6 +360,8 @@ function App() {
           customBeads={currentSongBeads}
           onOpenSongDetail={() => setShowSongDetail(true)}
           cordColor={currentCordColor}
+          currentTime={currentTime}
+          duration={songDuration}
         />
       </div>
 

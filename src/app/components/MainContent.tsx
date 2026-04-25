@@ -163,9 +163,13 @@ export function MainContent({ onPlaySong, onOpenBracelet, onOpenGift, onOpenBlen
       // Open bracelet view first
       onOpenBracelet(song.id);
 
-      // Generate beads based on song - fewer beads for longer songs like Strobe
-      const numBeads = song.id === 2 ? Math.floor(Math.random() * 3) + 5 : Math.floor(Math.random() * 5) + 8;
-      const songDuration = song.id === 2 ? 632 : 60; // Strobe is 10:32 = 632 seconds
+      const numBeads = Math.floor(Math.random() * 5) + 8;
+      // Parse duration from "m:ss" string if durationSeconds not set
+      const parseDuration = (dur: string) => {
+        const [m, s] = dur.split(':').map(Number);
+        return (m || 0) * 60 + (s || 0);
+      };
+      const songDuration = song.durationSeconds ?? parseDuration(song.duration);
       const beads = [];
 
       for (let i = 0; i < numBeads; i++) {
@@ -178,7 +182,7 @@ export function MainContent({ onPlaySong, onOpenBracelet, onOpenGift, onOpenBlen
           shape: randomShape,
           color: randomColor,
           material: config.material,
-          timestamp: (i / numBeads) * songDuration,
+          timestamp: (i / Math.max(numBeads - 1, 1)) * songDuration,
           lyricText: '',
         };
 
