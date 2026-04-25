@@ -112,7 +112,7 @@ export function GiftDialog({ songTitle, artist, songId, onClose }: GiftDialogPro
       className="fixed inset-0 bg-black/90 backdrop-blur-xl z-50 flex items-center justify-center p-4"
       style={{ opacity: fadeOut ? 0 : 1, transition: 'opacity 0.3s ease-out', pointerEvents: fadeOut ? 'none' : 'all' }}
     >
-      <div className="glass-card rounded-3xl p-6 w-full max-w-md outer-glow-soft inner-glow overflow-y-auto" style={{ maxHeight: '90vh' }}>
+      <div className="glass-card rounded-3xl p-6 w-full max-w-md outer-glow-soft inner-glow overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent" style={{ maxHeight: '90vh' }}>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold">Gift Bracelet</h2>
           <button onClick={onClose} className="text-white/60 hover:text-white transition-colors">
