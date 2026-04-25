@@ -95,8 +95,75 @@ interface MainContentProps {
   onOpenBlend: (songTitle: string, artist: string) => void;
 }
 
+const SONG_META: Record<number, { title: string; artist: string; coverUrl: string; album: string; duration: string }> = {
+  100: { title: 'Rock with You', artist: 'Michael Jackson', coverUrl: '/covers/rock-with-you.jpg', album: 'Off the Wall', duration: '3:56' },
+  101: { title: 'Work', artist: 'Rihanna, Drake', coverUrl: '/covers/work.png', album: 'Anti', duration: '3:39' },
+  102: { title: 'Blinding Lights', artist: 'The Weeknd', coverUrl: '/covers/blinding-lights.png', album: 'After Hours', duration: '3:20' },
+  1:   { title: 'Replay', artist: 'Iyaz', coverUrl: '/covers/replay.jpg', album: 'Replay', duration: '3:31' },
+  2:   { title: 'Down', artist: 'Jay Sean, Lil Wayne', coverUrl: '/covers/down.jpg', album: 'All or Nothing', duration: '3:42' },
+};
+
+interface SongCharm {
+  songId: number;
+  title: string; artist: string; coverUrl: string; album: string; duration: string;
+  beadCount: number;
+  beadColors: string[];
+}
+
+// Phone-charm visual: beads strung on a straight vertical cord with a gold ring at top
+function PhoneCharm({ beadColors }: { beadColors: string[] }) {
+  const cx = 45, svgW = 90;
+  const ringY = 14, cordStart = 24, beadR = 9, gap = 4;
+  const N = Math.max(beadColors.length, 1);
+  const cordEnd = cordStart + N * (beadR * 2 + gap);
+  const svgH = cordEnd + 16;
+
+  return (
+    <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`}>
+      {/* Gold attachment ring */}
+      <circle cx={cx} cy={ringY} r={9} fill="none"
+        stroke="rgba(215,180,75,0.95)" strokeWidth="2.5"
+        style={{ filter: 'drop-shadow(0 0 5px rgba(215,180,75,0.6))' }} />
+      <circle cx={cx} cy={ringY} r={5.5} fill="none"
+        stroke="rgba(215,180,75,0.40)" strokeWidth="1" />
+
+      {/* Straight cord */}
+      <line x1={cx} y1={cordStart} x2={cx} y2={cordEnd}
+        stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" />
+
+      {/* Beads along the cord */}
+      {Array.from({ length: N }, (_, i) => {
+        const y = cordStart + beadR + i * (beadR * 2 + gap);
+        const color = beadColors[i] ?? null;
+        return color ? (
+          <g key={i}>
+            <circle cx={cx} cy={y} r={beadR} fill={color}
+              style={{ filter: `drop-shadow(0 0 7px ${color}aa)` }} />
+            <ellipse cx={cx - 2.5} cy={y - 3} rx={3} ry={2.2}
+              fill="rgba(255,255,255,0.40)" />
+          </g>
+        ) : (
+          <circle key={i} cx={cx} cy={y} r={7}
+            fill="rgba(255,255,255,0.04)"
+            stroke="rgba(255,255,255,0.12)" strokeWidth="1" strokeDasharray="3 2" />
+        );
+      })}
+
+      {/* Knot at bottom */}
+      <circle cx={cx} cy={cordEnd + 6} r={4}
+        fill="rgba(255,255,255,0.20)" />
+    </svg>
+  );
+}
+interface GiftedCard {
+  id: string; songTitle: string; artist: string; toName: string;
+  beads: Array<{ color: string }>;
+}
+
 export function MainContent({ onPlaySong, onOpenBracelet, onOpenGift, onOpenBlend }: MainContentProps) {
   const [allBracelets, setAllBracelets] = useState(predefinedBracelets);
+  const [songCharms, setSongCharms] = useState<SongCharm[]>([]);
+  const [giftedCards, setGiftedCards] = useState<GiftedCard[]>([]);
 
   const autoGenerateBracelet = (song: Song) => {
     // Defer to avoid setState during render
@@ -261,11 +328,59 @@ export function MainContent({ onPlaySong, onOpenBracelet, onOpenGift, onOpenBlen
       }
     };
 
-    loadBracelets();
+    // Load song charms: songs where the user has added lyric-annotated beads
+    const loadSongCharms = () => {
+      try {
+        const raw = localStorage.getItem('customBeads');
+        if (!raw) { setSongCharms([]); return; }
+        const allBeads: Record<string, any[]> = JSON.parse(raw);
+        const charms: SongCharm[] = Object.entries(allBeads)
+          .filter(([, beads]) => beads.some(b => b.lyricText && b.lyricText.length > 0))
+          .map(([songId, beads]) => {
+            const id = parseInt(songId);
+            const meta = SONG_META[id as keyof typeof SONG_META];
+            if (!meta) return null;
+            const lyricBeads = beads.filter(b => b.lyricText && b.lyricText.length > 0);
+            return {
+              songId: id, ...meta,
+              beadCount: lyricBeads.length,
+              beadColors: lyricBeads.map(b => b.color).slice(0, 12),
+            };
+          })
+          .filter((c): c is SongCharm => c !== null);
+        setSongCharms(charms);
+      } catch { setSongCharms([]); }
+    };
 
-    // Listen for storage events to reload when bracelets are saved
-    window.addEventListener('storage', loadBracelets);
-    return () => window.removeEventListener('storage', loadBracelets);
+    // Load gifted bracelets from sent gifts
+    const loadGiftedCards = () => {
+      try {
+        const sent: any[] = JSON.parse(localStorage.getItem('gifts_sent') ?? '[]');
+        const FRIEND_NAMES: Record<string, string> = {
+          user_jessica: 'Jessica', user_kida: 'Kida',
+          user_jack: 'Jack', user_sean: 'Sean',
+        };
+        setGiftedCards(sent.map(g => ({
+          id: g.id,
+          songTitle: g.songTitle,
+          artist: g.artist,
+          toName: FRIEND_NAMES[g.toUserId] ?? g.toUserId,
+          beads: g.beads ?? [],
+        })));
+      } catch { setGiftedCards([]); }
+    };
+
+    loadBracelets();
+    loadSongCharms();
+    loadGiftedCards();
+
+    const handleStorage = () => {
+      loadBracelets();
+      loadSongCharms();
+      loadGiftedCards();
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   return (
@@ -311,10 +426,41 @@ export function MainContent({ onPlaySong, onOpenBracelet, onOpenGift, onOpenBlen
           </div>
         </section>
 
-        {/* Charm Bracelets */}
+        {/* Song Charms — annotated songs */}
+        {songCharms.length > 0 && (
+          <section className="mb-12">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold">Song Charms</h2>
+                <p className="text-sm text-white/40 mt-0.5">Your annotated moments</p>
+              </div>
+            </div>
+            <div className="flex gap-5 overflow-x-auto pb-4 scrollbar-thin">
+              {songCharms.map(charm => (
+                <div
+                  key={charm.songId}
+                  onClick={() => onPlaySong({ id: charm.songId, title: charm.title, artist: charm.artist, album: charm.album, duration: charm.duration, coverUrl: charm.coverUrl })}
+                  className="flex-shrink-0 glass-card rounded-3xl cursor-pointer transition-all hover:scale-105 outer-glow-subtle flex flex-col items-center pt-5 pb-4 px-4"
+                  style={{ width: 130 }}
+                >
+                  {/* Phone charm visual */}
+                  <PhoneCharm beadColors={charm.beadColors} />
+                  {/* Labels */}
+                  <h3 className="font-semibold text-sm truncate w-full text-center mt-3">{charm.title}</h3>
+                  <p className="text-xs text-white/45 truncate w-full text-center">{charm.artist}</p>
+                  <p className="text-xs mt-1" style={{ color: 'rgba(255,107,157,0.65)' }}>
+                    {charm.beadCount} moment{charm.beadCount !== 1 ? 's' : ''}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Playlist Bracelets */}
         <section className="mb-12">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold">Song Charm Bracelets</h2>
+            <h2 className="text-2xl font-bold">Playlist Bracelets</h2>
             <p className="text-sm text-white/60">Visualize songs as concert charm bracelets</p>
           </div>
 
@@ -332,6 +478,22 @@ export function MainContent({ onPlaySong, onOpenBracelet, onOpenGift, onOpenBlen
                   onGift={() => onOpenGift(bracelet.songId, bracelet.songTitle, bracelet.artist)}
                   onBlend={() => onOpenBlend(bracelet.songTitle, bracelet.artist)}
                 />
+              </div>
+            ))}
+            {/* Gifted bracelets */}
+            {giftedCards.map((gift) => (
+              <div key={gift.id} className="flex-shrink-0 relative">
+                <CharmBracelet
+                  beads={gift.beads.map(b => ({ type: 'bead' as const, color: b.color, material: 'glossy' as const }))}
+                  songTitle={gift.songTitle}
+                  artist={gift.artist}
+                />
+                <div
+                  className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-xs font-medium pointer-events-none"
+                  style={{ background: 'rgba(196,0,94,0.85)', color: 'white' }}
+                >
+                  Gifted to {gift.toName}
+                </div>
               </div>
             ))}
           </div>
