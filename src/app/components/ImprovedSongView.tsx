@@ -105,9 +105,12 @@ export function ImprovedSongView({
     if (currentIndex !== -1) setCurrentLyricIndex(currentIndex);
   }, [currentTime, lyrics]);
 
-  // Hydrate lyric-bound beads + notes from persisted customBeads on (re)open.
-  // Without this, reopening a song shows empty lyrics even though the beads
-  // are still in localStorage and visible on the homepage Song Charms card.
+  // Hydrate lyric-bound beads + notes from persisted customBeads ONCE per song.
+  // Reading customBeads here (instead of via deps) is intentional — the parent
+  // re-renders frequently as currentTime ticks, and a deps-based effect would
+  // wipe locally-added beads on every tick when customBeads[songId] is empty
+  // and the parent gives us a fresh `[]` reference each render.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const beads = new Map<number, CustomBead>();
     const notes = new Map<number, string>();
@@ -124,7 +127,7 @@ export function ImprovedSongView({
     setLyricBeads(beads);
     setLyricNotes(notes);
     initialBeadIdsRef.current = initialIds;
-  }, [customBeads, lyrics]);
+  }, [song.id]);
 
   // Click a lyric: select it for bead/note addition + seek to its time
   const handleLyricClick = (index: number) => {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { MainContent } from './components/MainContent';
 import { NowPlaying } from './components/NowPlaying';
@@ -23,6 +23,11 @@ export interface Song {
   spotifyUri?: string;
   durationSeconds?: number;
 }
+
+// Stable empty array — used as the no-beads fallback so consumers don't see a
+// fresh `[]` reference every render (which would otherwise spuriously retrigger
+// effects that depend on the customBeads prop).
+const EMPTY_BEADS: CustomBead[] = [];
 
 function App() {
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
@@ -472,7 +477,10 @@ function App() {
     return () => clearInterval(interval);
   }, [isPlaying, currentSong, audioLoadFailed, spotifyAuth, spotify.isReady]);
 
-  const currentSongBeads = currentSong ? customBeads[currentSong.id] || [] : [];
+  const currentSongBeads = useMemo(
+    () => (currentSong && customBeads[currentSong.id]) || EMPTY_BEADS,
+    [currentSong, customBeads]
+  );
   const currentCordColor = currentSong ? cordColors[currentSong.id] || '#ff6b9d' : '#ff6b9d';
   const songDuration = (spotifyActive && spotify.durationSeconds > 0)
     ? spotify.durationSeconds

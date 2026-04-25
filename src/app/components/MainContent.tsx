@@ -565,6 +565,7 @@ export function MainContent({ onPlaySong, onOpenBracelet, onOpenGift, onOpenBlen
                   beads={playlistToBeads(p)}
                   songTitle={p.name}
                   artist={`${p.songs.length} songs`}
+                  onGift={() => onOpenGift(p.songs[0]?.songId ?? 0, p.name, `${p.songs.length} songs`)}
                   onBlend={() => onOpenBlend(p.name, `${p.songs.length} songs`)}
                 />
               </div>
