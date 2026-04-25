@@ -544,6 +544,7 @@ function App() {
           })())}
           playlistName={playlistContext ? getPlaylistById(playlistContext.playlistId)?.name : undefined}
           playlistPosition={playlistContext ? `${playlistContext.index + 1} / ${getPlaylistById(playlistContext.playlistId)?.songs.length ?? 0}` : undefined}
+          songBead={playlistContext ? getPlaylistById(playlistContext.playlistId)?.songs[playlistContext.index]?.songBead : undefined}
         />
       )}
 

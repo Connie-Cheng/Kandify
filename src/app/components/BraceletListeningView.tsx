@@ -4,6 +4,7 @@ import { LetterBead } from './LetterBead';
 import { NumberBead } from './NumberBead';
 import { CustomImageBead } from './CustomImageBead';
 import { CustomBead } from './ImprovedSongView';
+import type { EnhancedBeadOption } from './EnhancedBeadGallery';
 
 interface BraceletListeningViewProps {
   songTitle: string;
@@ -25,6 +26,9 @@ interface BraceletListeningViewProps {
   canNext?: boolean;
   playlistName?: string;
   playlistPosition?: string;  // e.g. "3 / 8"
+  // Song bead from the playlist (the same bead shown on the playlist bracelet
+  // for this song). Renders inline before the title.
+  songBead?: EnhancedBeadOption;
 }
 
 export function BraceletListeningView({
@@ -45,6 +49,7 @@ export function BraceletListeningView({
   canNext = false,
   playlistName,
   playlistPosition,
+  songBead,
 }: BraceletListeningViewProps) {
   const progress = (currentTime / duration) * 100;
 
@@ -80,10 +85,20 @@ export function BraceletListeningView({
           <img src={coverUrl} alt={songTitle} className="w-full h-full object-cover" />
         </div>
 
-        {/* Song Info */}
-        <div className="text-center">
-          <h1 className="text-3xl font-bold mb-2">{songTitle}</h1>
-          <p className="text-xl text-white/60">{artist}</p>
+        {/* Song Info — song bead sits inline before the title when present. */}
+        <div className="flex items-center justify-center gap-3">
+          {songBead && (
+            <ShapedBead
+              shape={(songBead.shape as any) || 'circle'}
+              color={songBead.color}
+              material={songBead.material}
+              size="medium"
+            />
+          )}
+          <div className="text-center">
+            <h1 className="text-3xl font-bold mb-2">{songTitle}</h1>
+            <p className="text-xl text-white/60">{artist}</p>
+          </div>
         </div>
 
         {/* Bracelet Timeline */}
